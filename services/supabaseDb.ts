@@ -66,14 +66,24 @@ export const SupabaseDB = {
         allowedBranches: string[];
     }): Promise<{ success: boolean; error?: string; userId?: string }> {
         try {
-            // 1. Create auth user with admin API
-            const { data: authData, error: authError } = await supabase.auth.admin.createUser({
+            // WORKAROUND: Client-side creation without logging out current admin
+            // We create a temporary client instance just for this operation
+            const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+            const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+            // @ts-ignore - Dynamic import to avoid circular dependency if needed, but here we just use the class
+            const { createClient } = await import('@supabase/supabase-js');
+            const tempClient = createClient(supabaseUrl, supabaseAnonKey);
+
+            // 1. Create auth user using public signUp (requires "Allow new users to sign up" ON)
+            const { data: authData, error: authError } = await tempClient.auth.signUp({
                 email: userData.email,
                 password: userData.password,
-                email_confirm: true, // Skip email confirmation
-                user_metadata: {
-                    name: userData.name,
-                    nickname: userData.nickname
+                options: {
+                    data: {
+                        name: userData.name,
+                        nickname: userData.nickname
+                    }
                 }
             });
 
@@ -82,13 +92,15 @@ export const SupabaseDB = {
                 return { success: false, error: authError?.message || 'Failed to create auth user' };
             }
 
-            // 2. Create/Update profile with permissions
+            // 2. Create/Update profile with permissions using MAIN client (Admin privileges)
+            // Even though signUp might create the user, the profile trigger might not have set all fields, or we need to update role.
             const { error: profileError } = await supabase
                 .from('profiles')
                 .upsert({
                     id: authData.user.id,
                     name: userData.name,
                     nickname: userData.nickname,
+                    email: userData.email, // Ensure email is in profile for reference
                     role: userData.role,
                     allowed_clusters: userData.allowedClusters,
                     allowed_branches: userData.allowedBranches,
@@ -97,9 +109,8 @@ export const SupabaseDB = {
 
             if (profileError) {
                 console.error('Profile creation error:', profileError);
-                // Try to delete the auth user if profile creation failed
-                await supabase.auth.admin.deleteUser(authData.user.id);
-                return { success: false, error: profileError.message };
+                // Note: We cannot easily delete the user with Anon key, so we just return error
+                return { success: false, error: 'User created but profile failed: ' + profileError.message };
             }
 
             return { success: true, userId: authData.user.id };
