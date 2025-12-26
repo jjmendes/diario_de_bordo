@@ -1,11 +1,16 @@
 import { GoogleGenAI } from "@google/genai";
 import { Occurrence } from "../types";
 
-// Initialize the AI client
-// Note: API KEY must be provided in environment variables.
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+// Initialize the AI client only if API key is available
+const apiKey = import.meta.env.VITE_GEMINI_API_KEY || '';
+const ai = apiKey ? new GoogleGenAI({ apiKey }) : null;
 
 export const generateDailyReport = async (occurrences: Occurrence[], userRole: string): Promise<string> => {
+  // Check if AI is configured
+  if (!ai || !apiKey) {
+    return "⚠️ **Relatório de IA não configurado**\n\nPara habilitar esta funcionalidade, configure a variável de ambiente `VITE_GEMINI_API_KEY` com sua chave da Google AI Studio.\n\n[Obter chave gratuita](https://aistudio.google.com/app/apikey)";
+  }
+
   try {
     // Prepare a summary of data for the AI
     const dataSummary = occurrences.map(o => ({
