@@ -7,6 +7,7 @@ import { MockDB } from '../services/mockDatabase';
 
 interface OccurrenceListProps {
   occurrences: Occurrence[];
+  users?: User[]; // Optional to avoid breaking other usages if any
   currentUser: User;
   onUpdateStatus: (id: string, newStatus: OccurrenceStatus, feedback?: string) => void;
   onUpdateEscalation: (id: string, newLevel: EscalationLevel) => void;
@@ -15,7 +16,7 @@ interface OccurrenceListProps {
   onDelete: (id: string) => void;
 }
 
-export const OccurrenceList: React.FC<OccurrenceListProps> = ({ occurrences, currentUser, onUpdateStatus, onUpdateEscalation, onViewDetails, onEdit, onDelete }) => {
+export const OccurrenceList: React.FC<OccurrenceListProps> = ({ occurrences, users = [], currentUser, onUpdateStatus, onUpdateEscalation, onViewDetails, onEdit, onDelete }) => {
   // --- Filter States ---
   const [filters, setFilters] = useState({
     startDate: '',
@@ -38,6 +39,10 @@ export const OccurrenceList: React.FC<OccurrenceListProps> = ({ occurrences, cur
   const [importModalOpen, setImportModalOpen] = useState(false);
   const [pendingFileText, setPendingFileText] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // --- Bulk Delete States (Admin) ---
+  const [showBulkDeleteMenu, setShowBulkDeleteMenu] = useState(false);
+  const [bulkDeleteFilters, setBulkDeleteFilters] = useState({ startDate: '', endDate: '', cluster: '', branch: '', technicianId: '' });
 
   const options = useMemo(() => {
     const data = occurrences;
@@ -165,6 +170,41 @@ export const OccurrenceList: React.FC<OccurrenceListProps> = ({ occurrences, cur
     setPendingFileText('');
   };
 
+  const handleBulkDelete = async () => {
+    // 1. Confirm
+    const selectedUser = users?.find(u => u.id === bulkDeleteFilters.technicianId);
+
+    const filtersLabel = [
+      bulkDeleteFilters.startDate ? `De: ${formatDate(bulkDeleteFilters.startDate)}` : '',
+      bulkDeleteFilters.endDate ? `Até: ${formatDate(bulkDeleteFilters.endDate)}` : '',
+      bulkDeleteFilters.cluster ? `Cluster: ${bulkDeleteFilters.cluster}` : '',
+      bulkDeleteFilters.branch ? `Filial: ${bulkDeleteFilters.branch}` : '',
+      selectedUser ? `Usuário: ${selectedUser.name}` : ''
+    ].filter(Boolean).join(', ');
+
+    const msg = `ATENÇÃO: Você está prestes a excluir ocorrências!\n\nCritérios: ${filtersLabel || 'TODAS AS OCORRÊNCIAS (Sem filtros selecionados)'}\n\nEsta ação não pode ser desfeita. Tem certeza absoluta?`;
+
+    if (!window.confirm(msg)) return;
+    // Double confirmation for delete all
+    if (!filtersLabel && !window.confirm("VOCÊ NÃO SELECIONOU NENHUM FILTRO. ISSO APAGARÁ TODO O BANCO DE DADOS DE OCORRÊNCIAS.\n\nConfirma DE NOVO?")) return;
+
+    try {
+      const deletedCount = await import('../services/supabaseDb').then(m => m.SupabaseDB.deleteManyOccurrences({
+        startDate: bulkDeleteFilters.startDate,
+        endDate: bulkDeleteFilters.endDate,
+        cluster: bulkDeleteFilters.cluster,
+        branch: bulkDeleteFilters.branch,
+        technicianId: bulkDeleteFilters.technicianId // Direct ID now
+      }));
+
+      alert(`Sucesso! ${deletedCount} ocorrências foram excluídas.`);
+      window.location.reload(); // Simple refresh to update list
+    } catch (e: any) {
+      console.error(e);
+      alert(`Erro ao excluir ocorrências: ${e.message || e.error_description || JSON.stringify(e)}`);
+    }
+  };
+
   return (
     <div className="bg-white rounded-lg shadow-sm border border-slate-200 mt-6">
       {/* Custom Header with Title and Action Buttons */}
@@ -173,6 +213,13 @@ export const OccurrenceList: React.FC<OccurrenceListProps> = ({ occurrences, cur
         <div className="flex gap-2">
           {currentUser.role === UserRole.ADMIN && (
             <>
+              <button
+                onClick={() => setShowBulkDeleteMenu(!showBulkDeleteMenu)}
+                className={`p-2 rounded-md transition-colors ${showBulkDeleteMenu ? 'bg-red-600 text-white' : 'text-red-600 border border-red-200 hover:bg-red-50'}`}
+                title="Exclusão em Lote"
+              >
+                <Trash2 size={18} />
+              </button>
               <button
                 onClick={handleDownloadTemplate}
                 className="p-2 text-slate-600 hover:bg-slate-100 rounded-md border border-slate-200 transition-colors"
@@ -236,6 +283,7 @@ export const OccurrenceList: React.FC<OccurrenceListProps> = ({ occurrences, cur
           </div>
         </Modal>
 
+        {/* --- EXPORT MENU --- */}
         {showExportMenu && (
           <div className="mb-6 bg-[#940910]/5 border border-[#940910]/20 p-4 rounded-lg animate-in fade-in slide-in-from-top-2">
             <h4 className="text-sm font-bold text-[#940910] mb-3 flex items-center gap-2">
@@ -263,6 +311,54 @@ export const OccurrenceList: React.FC<OccurrenceListProps> = ({ occurrences, cur
               <Button onClick={handleExport} className="bg-[#940910] hover:bg-[#7a060c] text-white text-xs">
                 Baixar Relatório
               </Button>
+            </div>
+          </div>
+        )}
+
+        {/* --- BULK DELETE MENU (ADMIN ONLY) --- */}
+        {showBulkDeleteMenu && currentUser.role === UserRole.ADMIN && (
+          <div className="mb-6 bg-red-50 border border-red-200 p-4 rounded-lg animate-in fade-in slide-in-from-top-2">
+            <h4 className="text-sm font-bold text-red-800 mb-3 flex items-center gap-2">
+              <Trash2 size={16} /> Exclusão em Lote (Cuidado!)
+            </h4>
+            <p className="text-xs text-red-600 mb-4">
+              Selecione os critérios para exclusão. <strong>Esta ação é irreversível.</strong> Deixe os filtros em branco para ignorá-los. Se não selecionar nada e clicar em "Excluir", <strong>TUDO SERÁ APAGADO</strong>.
+            </p>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 items-end">
+              <div className="lg:col-span-1">
+                <label className="block text-[10px] font-medium text-red-800 mb-1">Período de Análise</label>
+                <DateRangePicker
+                  startDate={bulkDeleteFilters.startDate}
+                  endDate={bulkDeleteFilters.endDate}
+                  onChange={(s, e) => setBulkDeleteFilters({ ...bulkDeleteFilters, startDate: s, endDate: e })}
+                />
+              </div>
+              <div>
+                <label className="block text-[10px] font-medium text-red-800 mb-1">Cluster</label>
+                <select className="w-full border border-red-200 rounded p-1.5 text-xs bg-white focus:ring-red-500 focus:border-red-500" value={bulkDeleteFilters.cluster} onChange={e => setBulkDeleteFilters({ ...bulkDeleteFilters, cluster: e.target.value })}>
+                  <option value="">Todos</option>
+                  {options.clusters.map(c => <option key={c} value={c}>{c}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-[10px] font-medium text-red-800 mb-1">Filial</label>
+                <select className="w-full border border-red-200 rounded p-1.5 text-xs bg-white focus:ring-red-500 focus:border-red-500" value={bulkDeleteFilters.branch} onChange={e => setBulkDeleteFilters({ ...bulkDeleteFilters, branch: e.target.value })}>
+                  <option value="">Todas</option>
+                  {options.branches.map(b => <option key={b} value={b}>{b}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-[10px] font-medium text-red-800 mb-1">Usuário</label>
+                <select className="w-full border border-red-200 rounded p-1.5 text-xs bg-white focus:ring-red-500 focus:border-red-500" value={bulkDeleteFilters.technicianId} onChange={e => setBulkDeleteFilters({ ...bulkDeleteFilters, technicianId: e.target.value })}>
+                  <option value="">Todos</option>
+                  {users && users.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
+                </select>
+              </div>
+              <div className="lg:col-span-4 flex justify-end mt-2">
+                <Button onClick={handleBulkDelete} className="bg-red-600 hover:bg-red-700 text-white text-xs px-8 flex gap-2 items-center">
+                  <Trash2 size={14} /> Excluir Registros Selecionados
+                </Button>
+              </div>
             </div>
           </div>
         )}

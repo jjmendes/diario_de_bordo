@@ -18,6 +18,7 @@ import { AuthProvider, useAuth } from './components/AuthProvider';
 const AppContent = () => {
   const { user: currentUser, loading: authLoading, signOut } = useAuth();
   const [occurrences, setOccurrences] = useState<Occurrence[]>([]);
+  const [users, setUsers] = useState<User[]>([]); // New Users State
   const [loadingOccurrences, setLoadingOccurrences] = useState(false);
   const [selectedOccurrence, setSelectedOccurrence] = useState<Occurrence | null>(null);
   const [editingOccurrence, setEditingOccurrence] = useState<Occurrence | null>(null);
@@ -30,6 +31,7 @@ const AppContent = () => {
   useEffect(() => {
     if (currentUser) {
       fetchOccurrences();
+      fetchUsers(); // Fetch users
     }
   }, [currentUser]);
 
@@ -40,9 +42,15 @@ const AppContent = () => {
     setLoadingOccurrences(false);
   };
 
+  const fetchUsers = async () => {
+    const data = await SupabaseDB.getUsers();
+    setUsers(data);
+  };
+
   const handleLogout = async () => {
     await signOut();
     setOccurrences([]);
+    setUsers([]);
   };
 
   // Helper to format date manually
@@ -243,6 +251,7 @@ const AppContent = () => {
           <Route path="/list" element={
             <OccurrenceList
               occurrences={occurrences}
+              users={users} // Pass users prop
               currentUser={currentUser}
               onUpdateStatus={handleUpdateStatus}
               onUpdateEscalation={handleUpdateEscalation}

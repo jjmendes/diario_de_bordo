@@ -144,6 +144,21 @@ export const SupabaseDB = {
         if (error) throw error;
     },
 
+    async deleteManyOccurrences(filters: { startDate?: string, endDate?: string, cluster?: string, branch?: string, technicianId?: string }): Promise<number> {
+        // PostgREST requires a filter for DELETE. We use neq('id', '00000000-0000-0000-0000-000000000000') as a dummy filter.
+        let query = supabase.from('occurrences').delete({ count: 'exact' }).neq('id', '00000000-0000-0000-0000-000000000000');
+
+        if (filters.startDate) query = query.gte('date', filters.startDate);
+        if (filters.endDate) query = query.lte('date', filters.endDate);
+        if (filters.cluster) query = query.eq('cluster', filters.cluster);
+        if (filters.branch) query = query.eq('branch', filters.branch);
+        if (filters.technicianId) query = query.eq('technician_id', filters.technicianId);
+
+        const { count, error } = await query;
+        if (error) throw error;
+        return count || 0;
+    },
+
     // --- TEAM MEMBERS ---
 
     async getMyTeam(currentUserId: string, role: string): Promise<TeamMember[]> {
