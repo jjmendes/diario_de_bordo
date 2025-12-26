@@ -304,6 +304,56 @@ export const AdminPanel: React.FC = () => {
       )
     ).join("\n");
     downloadCSV(`estrutura_geo_${new Date().toISOString().split('T')[0]}.csv`, header + rows);
+    downloadCSV(`estrutura_geo_${new Date().toISOString().split('T')[0]}.csv`, header + rows);
+  };
+
+  const handleSystemBackup = async () => {
+    if (!window.confirm("Gerar backup completo do sistema em JSON? Isso pode levar alguns segundos.")) return;
+
+    setLoadingTeam(true);
+    try {
+      const [team, users, occurrences, reasons, geo] = await Promise.all([
+        SupabaseDB.getMyTeam('admin', UserRole.ADMIN),
+        SupabaseDB.getUsers(),
+        SupabaseDB.getOccurrences(),
+        SupabaseDB.getReasonHierarchy(),
+        SupabaseDB.getGeoHierarchy()
+      ]);
+
+      const backupData = {
+        metadata: {
+          timestamp: new Date().toISOString(),
+          version: "2.0",
+          generatedBy: "Admin Panel"
+        },
+        data: {
+          team,
+          users,
+          occurrences,
+          configs: {
+            reasons,
+            geo
+          }
+        }
+      };
+
+      const blob = new Blob([JSON.stringify(backupData, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.setAttribute("href", url);
+      link.setAttribute("download", `backup_sistema_db_${new Date().toISOString().split('T')[0]}.json`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      alert("Backup gerado com sucesso!");
+    } catch (e) {
+      console.error("Erro no backup:", e);
+      alert("Erro ao gerar backup. Verifique o console.");
+    } finally {
+      setLoadingTeam(false);
+    }
   };
 
   // ================= DATA MIGRATION LOGIC =================
