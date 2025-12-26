@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { HashRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { User, UserRole, Occurrence, OccurrenceStatus, EscalationLevel } from './types';
 import { SupabaseDB } from './services/supabaseDb'; // CHANGED: Import SupabaseDB
-import { generateDailyReport } from './services/geminiService';
+
 import { Dashboard } from './components/Dashboard';
 import { OccurrenceList } from './components/OccurrenceList';
 import { OccurrenceForm } from './components/OccurrenceForm';
@@ -12,7 +12,7 @@ import { Login } from './components/Login';
 import { UserProfileModal } from './components/UserProfileModal';
 import { Layout } from './components/Layout';
 import { Button, Card, Modal, Badge } from './components/UiComponents';
-import { Bot, Shield } from 'lucide-react';
+import { Shield } from 'lucide-react';
 import { AuthProvider, useAuth } from './components/AuthProvider';
 
 const AppContent = () => {
@@ -24,8 +24,7 @@ const AppContent = () => {
   const [editingOccurrence, setEditingOccurrence] = useState<Occurrence | null>(null);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
 
-  const [aiReport, setAiReport] = useState<string>('');
-  const [aiLoading, setAiLoading] = useState(false);
+
 
   // Load initial data
   useEffect(() => {
@@ -187,18 +186,7 @@ const AppContent = () => {
     }
   };
 
-  const handleGenerateReport = async () => {
-    if (!currentUser) return;
-    setAiLoading(true);
-    try {
-      const report = await generateDailyReport(occurrences, currentUser.role);
-      setAiReport(report);
-    } catch (e) {
-      console.error(e);
-      setAiReport("Erro ao gerar relatório AI. Verifique a configuração.");
-    }
-    setAiLoading(false);
-  };
+
 
   if (authLoading) return <div className="flex h-screen items-center justify-center bg-slate-50 text-[#940910]">Carregando Sistema...</div>;
 
@@ -223,26 +211,7 @@ const AppContent = () => {
                 <Dashboard occurrences={occurrences} />
               )}
 
-              {/* AI Report Section */}
-              <Card title="Relatório Diário Inteligente (IA)" className="mt-6 border-[#F6B700]/30">
-                <div className="space-y-4">
-                  <p className="text-sm text-slate-600">
-                    Utilize a inteligência artificial Gemini para analisar as ocorrências do dia, identificar padrões de gargalo e sugerir ações corretivas para a equipe.
-                  </p>
 
-                  {!aiReport && (
-                    <Button onClick={handleGenerateReport} disabled={aiLoading} className="bg-[#940910] hover:bg-[#7a060c] text-white shadow-lg">
-                      {aiLoading ? 'Gerando Análise...' : 'Gerar Relatório Executivo com IA'} <Bot size={18} />
-                    </Button>
-                  )}
-
-                  {aiReport && (
-                    <div className="mt-4 bg-slate-50 p-6 rounded-lg border border-slate-100 text-sm text-slate-700 leading-relaxed whitespace-pre-line shadow-inner">
-                      {aiReport}
-                    </div>
-                  )}
-                </div>
-              </Card>
             </div>
           } />
 
