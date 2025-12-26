@@ -56,6 +56,59 @@ export const SupabaseDB = {
         if (error) throw error;
     },
 
+    async createUser(userData: {
+        email: string;
+        password: string;
+        name: string;
+        nickname: string;
+        role: string;
+        allowedClusters: string[];
+        allowedBranches: string[];
+    }): Promise<{ success: boolean; error?: string; userId?: string }> {
+        try {
+            // 1. Create auth user with admin API
+            const { data: authData, error: authError } = await supabase.auth.admin.createUser({
+                email: userData.email,
+                password: userData.password,
+                email_confirm: true, // Skip email confirmation
+                user_metadata: {
+                    name: userData.name,
+                    nickname: userData.nickname
+                }
+            });
+
+            if (authError || !authData.user) {
+                console.error('Auth creation error:', authError);
+                return { success: false, error: authError?.message || 'Failed to create auth user' };
+            }
+
+            // 2. Create/Update profile with permissions
+            const { error: profileError } = await supabase
+                .from('profiles')
+                .upsert({
+                    id: authData.user.id,
+                    name: userData.name,
+                    nickname: userData.nickname,
+                    role: userData.role,
+                    allowed_clusters: userData.allowedClusters,
+                    allowed_branches: userData.allowedBranches,
+                    avatar_url: null
+                });
+
+            if (profileError) {
+                console.error('Profile creation error:', profileError);
+                // Try to delete the auth user if profile creation failed
+                await supabase.auth.admin.deleteUser(authData.user.id);
+                return { success: false, error: profileError.message };
+            }
+
+            return { success: true, userId: authData.user.id };
+        } catch (e: any) {
+            console.error('Unexpected error creating user:', e);
+            return { success: false, error: e.message || 'Unexpected error' };
+        }
+    },
+
     // --- OCCURRENCES ---
 
     async getOccurrences(): Promise<Occurrence[]> {

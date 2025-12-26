@@ -763,7 +763,9 @@ export const AdminPanel: React.FC = () => {
 
   const handleAddOrUpdateUser = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (newUserProps.name && newUserProps.id) {
+    if (newUserProps.name && newUserProps.id && newUserProps.email && newUserProps.password) {
+      setLoadingUsers(true);
+
       if (editingUserOriginalId) {
         // Update handling
         const userData: Partial<User> = {
@@ -784,12 +786,39 @@ export const AdminPanel: React.FC = () => {
         } catch (e) {
           console.error(e);
           alert("Erro ao atualizar usuário.");
+        } finally {
+          setLoadingUsers(false);
         }
       } else {
-        alert("Para adicionar novos usuários, utilize o Painel do Supabase (Authentication > Users > Invite). O usuário aparecerá aqui após o primeiro login ou criação.");
+        // Create new user
+        try {
+          const result = await SupabaseDB.createUser({
+            email: newUserProps.email,
+            password: newUserProps.password,
+            name: newUserProps.name,
+            nickname: newUserProps.nickname,
+            role: newUserProps.role,
+            allowedClusters: newUserProps.allowedClusters,
+            allowedBranches: newUserProps.allowedBranches
+          });
+
+          if (result.success) {
+            alert(`Usuário criado com sucesso!\n\nEmail: ${newUserProps.email}\nSenha: ${newUserProps.password}\n\nComunique essas credenciais ao colaborador de forma segura.`);
+            setNewUserProps({ name: '', id: '', email: '', nickname: '', password: '', role: UserRole.CONTROLADOR, allowedClusters: [], allowedBranches: [] });
+            setIsAddingUser(false);
+            await refreshData();
+          } else {
+            alert(`Erro ao criar usuário: ${result.error}`);
+          }
+        } catch (e: any) {
+          console.error(e);
+          alert(`Erro ao criar usuário: ${e.message || 'Erro desconhecido'}`);
+        } finally {
+          setLoadingUsers(false);
+        }
       }
     } else {
-      alert("Preencha todos os dados.");
+      alert("Preencha todos os dados obrigatórios (Nome, Email, Senha).");
     }
   };
   const handleEditUser = (user: User) => {
