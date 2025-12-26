@@ -61,7 +61,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                     allowedBranches: data.allowed_branches
                 });
             } else {
-                // Fallback for new users without profile yet (handled by trigger but just in case)
+                // Fallback for new users without profile yet
                 setUser({
                     id: userId,
                     name: email?.split('@')[0] || 'User',
@@ -71,8 +71,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                     allowedBranches: []
                 });
             }
-        } catch (error) {
+        } catch (error: any) {
             console.error('Error fetching profile:', error);
+            alert(`Erro ao carregar perfil: ${error.message || JSON.stringify(error)}`);
         } finally {
             setLoading(false);
         }
@@ -80,7 +81,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     const signIn = async (email: string, pass: string) => {
         const { error } = await supabase.auth.signInWithPassword({ email, password: pass });
-        if (error) throw error;
+        if (error) {
+            alert(`Erro no Login: ${error.message}`);
+            throw error;
+        }
     };
 
     const signOut = async () => {
