@@ -825,10 +825,22 @@ export const AdminPanel: React.FC = () => {
     setNewUserProps({ name: user.name, id: user.id, email: user.email || '', nickname: user.nickname || '', password: user.password || '', role: user.role, allowedClusters: user.allowedClusters || [], allowedBranches: user.allowedBranches || [] });
     setEditingUserOriginalId(user.id); setIsAddingUser(true);
   };
-  const handleDeleteUser = (e: React.MouseEvent, id: string) => {
+  const handleDeleteUser = async (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
     e.preventDefault();
-    alert("Para excluir um usuário, remova-o no Painel do Supabase (Authentication > Users).");
+    if (window.confirm("ATENÇÃO: Excluir um usuário é irreversível!\n\nTem certeza que deseja excluir este usuário?")) {
+      setLoadingUsers(true);
+      try {
+        await SupabaseDB.deleteUser(id);
+        alert("Usuário excluído com sucesso!");
+        await refreshData();
+      } catch (e: any) {
+        console.error(e);
+        alert(`Erro ao excluir usuário: ${e.message || 'Erro desconhecido'}`);
+      } finally {
+        setLoadingUsers(false);
+      }
+    }
   };
 
   const handleCancelEditUser = () => {

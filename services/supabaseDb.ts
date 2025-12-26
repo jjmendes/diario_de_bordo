@@ -26,7 +26,7 @@ export const SupabaseDB = {
             id: p.id,
             name: p.name,
             nickname: p.nickname,
-            email: 'user@system', // Email is protected in auth.users, mock or fetch if needed (requires admin)
+            email: p.email, // Now real email from DB
             role: p.role as any,
             avatar: p.avatar_url,
             allowedClusters: p.allowed_clusters || [],
@@ -40,9 +40,11 @@ export const SupabaseDB = {
         const updates = {
             name: user.name,
             nickname: user.nickname,
+            email: user.email, // Include email in updates
             allowed_clusters: user.allowedClusters,
             allowed_branches: user.allowedBranches,
-            avatar_url: user.avatar
+            avatar_url: user.avatar,
+            role: user.role
         };
 
         // Remove undefined
@@ -53,6 +55,11 @@ export const SupabaseDB = {
             .update(updates)
             .eq('id', user.id);
 
+        if (error) throw error;
+    },
+
+    async deleteUser(userId: string): Promise<void> {
+        const { error } = await supabase.rpc('delete_user_by_id', { target_user_id: userId });
         if (error) throw error;
     },
 
