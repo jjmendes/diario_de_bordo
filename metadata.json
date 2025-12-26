@@ -1,0 +1,9 @@
+{
+  "name": "V2 do Diário de Bordo",
+  "description": "Sistema completo para gestão de ocorrências de campo, auditoria e controle operacional com inteligência artificial.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone",
+    "geolocation"
+  ]
+}
