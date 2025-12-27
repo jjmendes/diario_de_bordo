@@ -37,23 +37,17 @@ export const SupabaseDB = {
     async updateUser(user: Partial<User>): Promise<void> {
         if (!user.id) return;
 
-        const updates = {
-            name: user.name,
-            nickname: user.nickname,
-            email: user.email, // Include email in updates
-            allowed_clusters: user.allowedClusters,
-            allowed_branches: user.allowedBranches,
-            avatar_url: user.avatar,
-            role: user.role
-        };
-
-        // Remove undefined
-        Object.keys(updates).forEach(key => (updates as any)[key] === undefined && delete (updates as any)[key]);
-
-        const { error } = await supabase
-            .from('profiles')
-            .update(updates)
-            .eq('id', user.id);
+        // Use RPC to update both auth.users and profiles atomically
+        const { error } = await supabase.rpc('admin_update_user', {
+            target_user_id: user.id,
+            new_email: user.email,
+            new_password: user.password || '', // Empty string = don't change
+            new_name: user.name,
+            new_nickname: user.nickname,
+            new_role: user.role,
+            new_clusters: user.allowedClusters,
+            new_branches: user.allowedBranches
+        });
 
         if (error) throw error;
     },
