@@ -13,6 +13,7 @@ export const SupabaseDB = {
     // Users are managed via Auth, but extra data is in 'profiles'
 
     async getUsers(): Promise<User[]> {
+        // console.log("Fetching users...");
         const { data: profiles, error } = await supabase
             .from('profiles')
             .select('*');
@@ -711,5 +712,136 @@ export const SupabaseDB = {
     async updateCurrentUserPassword(newPassword: string): Promise<void> {
         const { error } = await supabase.auth.updateUser({ password: newPassword });
         if (error) throw error;
+    },
+
+    // --- SYSTEM BACKUP & RESTORE ---
+
+    async clearAllData(): Promise<void> {
+        // Deleting Occurrences first (depend on Users/Team)
+        await supabase.from('occurrences').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+        // Deleting Team
+        await supabase.from('team_members').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+        // We do NOT delete profiles as it deletes Auth users if cascading, or causes issues. 
+        // Restore will upsert/overwrite profiles.
+    },
+
+    async exportSystemData(): Promise<any> {
+        const [team, users, occurrences, reasons, geo] = await Promise.all([
+            SupabaseDB.getMyTeam('admin', 'ADMIN'), // Use string literal to avoid enum import issues
+            SupabaseDB.getUsers(),
+            SupabaseDB.getOccurrences(),
+            SupabaseDB.getReasonHierarchy(),
+            SupabaseDB.getGeoHierarchy()
+        ]);
+
+        return {
+            metadata: {
+                timestamp: new Date().toISOString(),
+                version: "2.0",
+                generatedBy: "Admin Panel"
+            },
+            data: {
+                team,
+                users,
+                occurrences,
+                configs: {
+                    reasons,
+                    geo
+                }
+            }
+        };
+    },
+
+    async restoreSystemData(backupData: any): Promise<{ success: boolean; errors: string[] }> {
+        const errors: string[] = [];
+        try {
+            // 1. Validate Structure
+            if (!backupData.data || !backupData.data.occurrences || !backupData.data.team) {
+                return { success: false, errors: ["Arquivo de backup inválido ou corrompido."] };
+            }
+
+            // Note: Caller usually calls clearAllData() first, but we can do it here too if not.
+            // The UI handles clearAllData call currently, but let's be safe.
+
+            // 3. Restore Configs
+            if (backupData.data.configs) {
+                if (backupData.data.configs.reasons) await SupabaseDB.saveReasonHierarchy(backupData.data.configs.reasons);
+                if (backupData.data.configs.geo) await SupabaseDB.saveGeoHierarchy(backupData.data.configs.geo);
+            }
+
+            // 4. Restore Team
+            if (backupData.data.team && backupData.data.team.length > 0) {
+                // Format for DB
+                const teamPayload = backupData.data.team.map((m: any) => ({
+                    id: m.id,
+                    name: m.name,
+                    role: m.role,
+                    reports_to_id: m.reportsToId,
+                    supervisor_id: m.supervisorId,
+                    coordenador_id: m.coordenadorId,
+                    gerente_id: m.gerenteId,
+                    controlador_id: m.controladorId,
+                    cluster: m.cluster,
+                    filial: m.filial,
+                    segment: m.segment,
+                    active: m.active
+                }));
+                // Batch upsert
+                const { error } = await supabase.from('team_members').upsert(teamPayload);
+                if (error) errors.push("Erro ao restaurar Equipe: " + error.message);
+            }
+
+            // 5. Restore Profiles (Metadata only)
+            if (backupData.data.users && backupData.data.users.length > 0) {
+                const profilesPayload = backupData.data.users.map((u: any) => ({
+                    id: u.id,
+                    name: u.name,
+                    nickname: u.nickname,
+                    email: u.email,
+                    role: u.role,
+                    allowed_clusters: u.allowedClusters,
+                    allowed_branches: u.allowedBranches,
+                    avatar_url: u.avatar
+                }));
+                const { error } = await supabase.from('profiles').upsert(profilesPayload);
+                if (error) errors.push("Erro ao restaurar Perfis: " + error.message);
+            }
+
+            // 6. Restore Occurrences
+            if (backupData.data.occurrences && backupData.data.occurrences.length > 0) {
+                const occPayload = backupData.data.occurrences.map((o: any) => ({
+                    id: o.id,
+                    technician_id: o.userId,
+                    registered_by: o.registeredByUserId,
+                    date: o.date,
+                    time: o.time,
+                    category: o.category,
+                    reason: o.reason,
+                    description: o.description,
+                    status: o.status,
+                    escalation_level: o.escalationLevel,
+                    cluster: o.cluster,
+                    branch: o.branch,
+                    sector: o.sector,
+                    location: o.location,
+                    audit_trail: o.auditTrail,
+                    feedback: o.feedback
+                }));
+
+                // Split into chunks if too large
+                const chunkSize = 100;
+                for (let i = 0; i < occPayload.length; i += chunkSize) {
+                    const chunk = occPayload.slice(i, i + chunkSize);
+                    const { error } = await supabase.from('occurrences').upsert(chunk);
+                    if (error) errors.push(`Erro ao restaurar Ocorrências (Lote ${i}): ${error.message}`);
+                }
+            }
+
+            return { success: errors.length === 0, errors };
+
+        } catch (e: any) {
+            console.error("Critical Restore Error:", e);
+            return { success: false, errors: [e.message] };
+        }
     }
 };

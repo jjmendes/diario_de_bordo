@@ -33,6 +33,8 @@ export const AdminPanel: React.FC = () => {
   // --- State for User Management ---
   const [systemUsers, setSystemUsers] = useState<User[]>([]);
   const [loadingUsers, setLoadingUsers] = useState(false);
+  const [loadingOccurrences, setLoadingOccurrences] = useState(false);
+  const [loadingRestore, setLoadingRestore] = useState(false);
   const [newUserProps, setNewUserProps] = useState<{ name: string, id: string, email: string, nickname: string, password: string, role: UserRole, allowedClusters: string[], allowedBranches: string[] }>({
     name: '', id: '', email: '', nickname: '', password: '', role: UserRole.CONTROLADOR, allowedClusters: [], allowedBranches: []
   });
@@ -420,6 +422,90 @@ export const AdminPanel: React.FC = () => {
       alert("Erro durante a migração. Verifique o console para detalhes.");
     } finally {
       setLoadingTeam(false);
+    }
+  };
+
+  const handleRestoreFromFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!window.confirm("ATENÇÃO: Restaurar de um backup substituirá TODOS os dados existentes no sistema (Equipe, Usuários, Ocorrências, Configurações).\n\nEsta ação é irreversível. Deseja continuar?")) {
+      e.target.value = ''; // Clear the file input
+      return;
+    }
+
+    setLoadingRestore(true);
+    try {
+      const reader = new FileReader();
+      reader.onload = async (event) => {
+        try {
+          const jsonString = event.target?.result as string;
+          const backupData = JSON.parse(jsonString);
+
+          if (!backupData || !backupData.data) {
+            alert("Arquivo de backup inválido. Estrutura de dados incorreta.");
+            setLoadingRestore(false);
+            return;
+          }
+
+          const { team, users, occurrences, configs } = backupData.data;
+
+          // Clear existing data (this is a full replace)
+          await SupabaseDB.clearAllData(); // This function needs to be implemented in SupabaseDB
+
+          // Restore configs first
+          if (configs?.reasons) await SupabaseDB.saveReasonHierarchy(configs.reasons);
+          if (configs?.geo) await SupabaseDB.saveGeoHierarchy(configs.geo);
+
+          // Restore users
+          if (users) {
+            for (const user of users) {
+              // For restore, we might need to handle password hashing or direct insert
+              // Assuming createUser handles this or we're just updating metadata for existing
+              // For a full restore, we'd need to re-create auth users too, which is complex.
+              // For now, let's assume we're just restoring the public.users table data.
+              await SupabaseDB.createUser({
+                email: user.email,
+                password: user.password || 'default_password', // Passwords are not usually backed up in plain text
+                name: user.name,
+                nickname: user.nickname,
+                role: user.role,
+                allowedClusters: user.allowedClusters,
+                allowedBranches: user.allowedBranches
+              });
+            }
+          }
+
+          // Restore team members
+          if (team) {
+            for (const member of team) {
+              await SupabaseDB.addTeamMember(member);
+            }
+          }
+
+          // Restore occurrences
+          if (occurrences) {
+            for (const occ of occurrences) {
+              await SupabaseDB.saveOccurrence(occ);
+            }
+          }
+
+          alert("Restauração concluída com sucesso!");
+          await refreshData();
+        } catch (parseError) {
+          console.error("Erro ao processar arquivo de backup:", parseError);
+          alert("Erro ao processar arquivo de backup. Verifique o formato JSON.");
+        } finally {
+          setLoadingRestore(false);
+          e.target.value = ''; // Clear the file input
+        }
+      };
+      reader.readAsText(file);
+    } catch (error) {
+      console.error("Erro ao iniciar restauração:", error);
+      alert("Erro ao iniciar restauração.");
+      setLoadingRestore(false);
+      e.target.value = ''; // Clear the file input
     }
   };
 
@@ -898,6 +984,9 @@ export const AdminPanel: React.FC = () => {
           </button>
           <button onClick={() => setActiveTab('CONFIG')} className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${activeTab === 'CONFIG' ? 'bg-[#940910] text-white shadow' : 'text-[#404040] hover:text-[#940910]'}`}>
             <div className="flex items-center gap-2"><List size={16} /> Configurações</div>
+          </button>
+          <button onClick={() => setActiveTab('DATABASE')} className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${activeTab === 'DATABASE' ? 'bg-[#940910] text-white shadow' : 'text-[#404040] hover:text-[#940910]'}`}>
+            <div className="flex items-center gap-2"><Database size={16} /> Banco de Dados</div>
           </button>
         </div>
       </div>
@@ -1422,7 +1511,6 @@ export const AdminPanel: React.FC = () => {
       {activeTab === 'TEAM' && (
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-300">
           <div className="flex flex-wrap justify-end gap-2">
-            <Button variant="outline" onClick={handleExportTeam} className="text-[#940910] border-[#940910]/20"><Download size={18} /> Exportar Base Completa</Button>
             <Button variant="ghost" onClick={handleDownloadTemplate} className="text-slate-600 border-slate-200 border"><FileDown size={18} /> Modelo CSV (Vazio)</Button>
             <Button variant="outline" onClick={() => { setFormType('TECNICO'); setIsAddingTeam(!isAddingTeam); setEditingOriginalId(null); setNewTeamName(''); setNewTeamId(''); setNewTeamRole(TeamMemberRole.TECNICO); setNewTeamReportsTo(''); setNewTeamSupervisor(''); setNewTeamCoordenador(''); setNewTeamGerente(''); setNewTeamControlador(''); setNewTeamCluster(''); setNewTeamFilial(''); setNewTeamSegment(''); }}>
               <UserPlus size={18} /> {isAddingTeam && formType === 'TECNICO' ? 'Ocultar Formulário' : 'Novo Técnico'}
@@ -1593,6 +1681,87 @@ export const AdminPanel: React.FC = () => {
           </Card>
         </div >
       )}
-    </div >
+      {activeTab === 'DATABASE' && (
+        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-300">
+          <Card title="Backup e Restauração de Dados" className="border-l-4 border-l-[#940910]">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              {/* EXPORT */}
+              <div className="space-y-4">
+                <div className="flex items-center gap-2 text-[#940910] font-bold text-lg">
+                  <Download size={24} /> Exportar Backup Completo
+                </div>
+                <p className="text-sm text-slate-600">
+                  Gera um arquivo JSON contendo todos os dados do sistema: Usuários, Equipe Técnica, Ocorrências e Configurações (Cluster e Motivos).
+                  Utilize este arquivo para criar pontos de restauração.
+                </p>
+                <Button onClick={handleSystemBackup} className="w-full bg-[#940910] hover:bg-[#7a060c] text-white py-6">
+                  <Download size={20} className="mr-2" /> Baixar Backup (.json)
+                </Button>
+              </div>
+
+              {/* IMPORT */}
+              <div className="space-y-4 border-t md:border-t-0 md:border-l pt-6 md:pt-0 md:pl-8 border-slate-200">
+                <div className="flex items-center gap-2 text-amber-600 font-bold text-lg">
+                  <Upload size={24} /> Restaurar Backup
+                </div>
+                <div className="bg-amber-50 border border-amber-200 rounded p-3 text-xs text-amber-800">
+                  <p className="font-bold mb-1">⚠️ ATENÇÃO: AÇÃO DESTRUTIVA</p>
+                  <ul className="list-disc pl-4 space-y-1">
+                    <li>Esta ação irá <strong>APAGAR TODOS</strong> os dados atuais (Ocorrências, Equipes, Configurações).</li>
+                    <li>Os dados serão substituídos pelo conteúdo do arquivo de backup.</li>
+                    <li><strong>Logins e Senhas (Auth)</strong> não são restaurados automaticamente. Se os usuários foram excluídos do sistema de autenticação, eles precisarão ser recriados manualmente ou solicitar redefinição de senha.</li>
+                  </ul>
+                </div>
+
+                <div className="flex flex-col gap-2">
+                  <input
+                    type="file"
+                    accept=".json"
+                    id="restore-file"
+                    className="block w-full text-sm text-slate-500
+                             file:mr-4 file:py-2 file:px-4
+                             file:rounded-full file:border-0
+                             file:text-sm file:font-semibold
+                             file:bg-[#940910]/10 file:text-[#940910]
+                             hover:file:bg-[#940910]/20
+                          "
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+
+                      if (!window.confirm("CRÍTICO: Você está prestes a apagar todo o banco de dados e restaurar este backup. Os logins dos usuários NÃO serão restaurados.\n\nDeseja continuar?")) {
+                        e.target.value = '';
+                        return;
+                      }
+
+                      setLoadingRestore(true);
+                      try {
+                        const text = await file.text();
+                        const json = JSON.parse(text);
+                        const result = await SupabaseDB.restoreSystemData(json);
+
+                        if (result.success) {
+                          alert("Sistema restaurado com sucesso! A página será recarregada.");
+                          window.location.reload();
+                        } else {
+                          alert("Erros na restauração:\n" + result.errors.join("\n"));
+                        }
+                      } catch (err: any) {
+                        console.error(err);
+                        alert("Erro ao processar arquivo: " + err.message);
+                      } finally {
+                        setLoadingRestore(false);
+                        e.target.value = '';
+                      }
+                    }}
+                  />
+                  {loadingRestore && <p className="text-center text-sm text-slate-500 animate-pulse">Restaurando dados... aguarde...</p>}
+                </div>
+              </div>
+            </div>
+          </Card>
+        </div>
+      )}
+    </div>
   );
 };
