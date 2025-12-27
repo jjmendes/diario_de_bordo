@@ -51,14 +51,14 @@ export const Login: React.FC<LoginProps> = () => {
     >
       <div className="absolute inset-0 bg-black/30 backdrop-blur-[2px]"></div> {/* Darker overlay for readability */}
       <div className="w-full max-w-md relative z-10">
-        <div className="text-center mb-8 flex flex-col items-center justify-center">
-          <div className="bg-black/60 backdrop-blur-md p-6 rounded-2xl border border-white/10 shadow-2xl flex flex-col items-center max-w-sm w-full transition-all hover:bg-black/70 group">
+        <div className="text-center mb-6 flex flex-col items-center justify-center w-full max-w-md mx-auto">
+          <div className="bg-black/40 backdrop-blur-md p-6 rounded-2xl border border-white/10 shadow-2xl flex flex-col items-center w-full transition-all hover:bg-black/50 group">
             <div className="bg-white/10 p-4 rounded-full mb-4 ring-1 ring-white/20 shadow-lg group-hover:scale-105 transition-transform duration-300">
               <ClipboardList size={40} className="text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)]" strokeWidth={2} />
             </div>
-            <h1 className="text-2xl font-black text-white uppercase tracking-wider mb-1 drop-shadow-lg">Diário de Bordo</h1>
+            <h1 className="text-2xl font-bold text-white tracking-wide mb-1 drop-shadow-lg">Diário de Bordo</h1>
             <div className="h-0.5 w-12 bg-[#940910] mb-3 rounded-full shadow-md"></div>
-            <p className="text-slate-300 font-medium text-sm tracking-wide">REGISTRO DE OCORRÊNCIAS</p>
+            <p className="text-slate-300 font-medium text-sm tracking-wide">Registro de Ocorrências</p>
           </div>
         </div>
 
