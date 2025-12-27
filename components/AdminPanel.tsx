@@ -1035,30 +1035,9 @@ export const AdminPanel: React.FC = () => {
           <div className="flex border-b border-slate-200 mb-4">
             <button onClick={() => setConfigMode('REASONS')} className={`px-4 py-2 text-sm font-bold border-b-2 transition-colors ${configMode === 'REASONS' ? 'border-[#940910] text-[#940910]' : 'border-transparent text-slate-500 hover:text-[#404040]'}`}>Motivos de Ocorrência</button>
             <button onClick={() => setConfigMode('GEO')} className={`px-4 py-2 text-sm font-bold border-b-2 transition-colors ${configMode === 'GEO' ? 'border-[#940910] text-[#940910]' : 'border-transparent text-slate-500 hover:text-[#404040]'}`}>Estrutura Operacional</button>
-            <button onClick={() => setConfigMode('DB')} className={`px-4 py-2 text-sm font-bold border-b-2 transition-colors ${configMode === 'DB' ? 'border-[#940910] text-[#940910]' : 'border-transparent text-slate-500 hover:text-[#404040]'}`}>Banco de Dados</button>
           </div>
 
-          {configMode === 'DB' && (
-            <div className="space-y-6">
-              <div className="bg-[#940910]/5 border border-[#940910]/20 rounded-lg p-4 text-sm text-[#940910]">
-                <h4 className="font-bold flex items-center gap-2 mb-1"><Database size={16} /> Manutenção do Banco de Dados</h4>
-                <p>O sistema agora utiliza <strong>Supabase (Nuvem)</strong>. Os backups são automáticos e gerenciados pela plataforma.</p>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <Card className="border border-slate-200 p-6 flex flex-col items-center text-center hover:shadow-md transition-shadow">
-                  <div className="bg-slate-100 p-4 rounded-full mb-4"><RefreshCw size={32} className="text-[#940910]" /></div>
-                  <h3 className="font-bold text-lg text-[#404040] mb-2">Migrar Dados Locais</h3>
-                  <p className="text-sm text-slate-500 mb-6">Copia os dados que estavam salvos no seu navegador (versão antiga) para a nova base na nuvem.</p>
-                  <Button onClick={handleMigrateToSupabase} className="bg-[#940910] hover:bg-[#7a060c] text-white w-full">Iniciar Migração</Button>
-                </Card>
-                <Card className="border border-slate-200 p-6 flex flex-col items-center text-center opacity-50">
-                  <div className="bg-slate-100 p-4 rounded-full mb-4"><Download size={32} className="text-slate-400" /></div>
-                  <h3 className="font-bold text-lg text-[#404040] mb-2">Backup / Restore</h3>
-                  <p className="text-sm text-slate-500 mb-6">Funcionalidade desativada. Use o painel do Supabase para gerenciar backups.</p>
-                </Card>
-              </div>
-            </div>
-          )}
+
           {configMode === 'REASONS' && (
             <>
               <div className="flex justify-end gap-2">
