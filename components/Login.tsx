@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Button, Card, Input } from './UiComponents';
-import { Lock, User, ClipboardList } from 'lucide-react';
+import { Lock, User, ClipboardList, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from './AuthProvider';
 
 interface LoginProps {
@@ -10,6 +10,7 @@ interface LoginProps {
 export const Login: React.FC<LoginProps> = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -55,10 +56,21 @@ export const Login: React.FC<LoginProps> = () => {
             <Input
               label="Senha"
               icon={Lock}
-              type="password"
+              type={showPassword ? 'text' : 'password'}
               placeholder="••••••"
               value={password}
               onChange={e => setPassword(e.target.value)}
+              endAdornment={
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="hover:text-[#940910] focus:outline-none transition-colors"
+                  tabIndex={-1}
+                  title={showPassword ? "Ocultar senha" : "Mostrar senha"}
+                >
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              }
               required
             />
 

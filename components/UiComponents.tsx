@@ -376,6 +376,7 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({ label, value, onChan
 interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   label?: string;
   icon?: React.ComponentType<{ size?: number; className?: string }>;
+  endAdornment?: React.ReactNode;
   error?: string;
   helperText?: string;
 }
@@ -383,6 +384,7 @@ interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
 export const Input: React.FC<InputProps> = ({
   label,
   icon: Icon,
+  endAdornment,
   error,
   helperText,
   className = "",
@@ -398,9 +400,14 @@ export const Input: React.FC<InputProps> = ({
       <div className="relative">
         {Icon && <Icon size={18} className="absolute left-3 top-3 text-slate-400" />}
         <input
-          className={`w-full ${Icon ? 'pl-10' : 'pl-4'} pr-4 py-2 border rounded-md bg-white focus:ring-2 focus:ring-[#940910] outline-none text-[#404040] ${error ? 'border-red-500' : 'border-slate-300'} ${className}`}
+          className={`w-full ${Icon ? 'pl-10' : 'pl-4'} ${endAdornment ? 'pr-10' : 'pr-4'} py-2 border rounded-md bg-white focus:ring-2 focus:ring-[#940910] outline-none text-[#404040] ${error ? 'border-red-500' : 'border-slate-300'} ${className}`}
           {...props}
         />
+        {endAdornment && (
+          <div className="absolute right-3 top-2.5 text-slate-400">
+            {endAdornment}
+          </div>
+        )}
       </div>
       {error && <p className="text-xs text-red-500 mt-1">{error}</p>}
       {helperText && !error && <p className="text-xs text-slate-500 mt-1">{helperText}</p>}
