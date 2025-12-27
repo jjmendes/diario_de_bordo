@@ -869,9 +869,9 @@ export const AdminPanel: React.FC = () => {
           setIsAddingUser(false);
           setEditingUserOriginalId(null);
           await refreshData();
-        } catch (e) {
-          console.error(e);
-          alert("Erro ao atualizar usuário.");
+        } catch (e: any) {
+          console.error("Erro ao atualizar usuário:", e);
+          alert(`Erro ao atualizar usuário: ${e.message || 'Erro desconhecido'}\n${e.details || ''}\n${e.hint || ''}`);
         } finally {
           setLoadingUsers(false);
         }
