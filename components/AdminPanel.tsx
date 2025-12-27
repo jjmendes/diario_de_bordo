@@ -3,7 +3,7 @@ import { SupabaseDB } from '../services/supabaseDb';
 import { MockDB } from '../services/mockDatabase'; // Temporary keep for methods not yet migrated
 import { TeamMember, TeamMemberRole, UserRole, User, ReasonTree, GeoCluster, GeoBranch } from '../types';
 import { Card, Button, Modal, Badge } from './UiComponents';
-import { Upload, Trash2, UserPlus, Users, Search, FileDown, User as UserIcon, Pencil, MapPin, List, Plus, Save, X, Download, ChevronDown, ChevronRight, Globe, Database, CheckCircle, FilterX, AlertOctagon, RefreshCw, AlertTriangle, HardHat } from 'lucide-react';
+import { Upload, Trash2, UserPlus, Users, Search, FileDown, User as UserIcon, Pencil, MapPin, List, Plus, Save, X, Download, ChevronDown, ChevronRight, Globe, Database, CheckCircle, FilterX, AlertOctagon, RefreshCw, AlertTriangle, HardHat, Info, Image as ImageIcon } from 'lucide-react';
 
 export const AdminPanel: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'USERS' | 'GESTORES' | 'TEAM' | 'CONFIG'>('USERS');
@@ -1035,8 +1035,91 @@ export const AdminPanel: React.FC = () => {
           <div className="flex border-b border-slate-200 mb-4">
             <button onClick={() => setConfigMode('REASONS')} className={`px-4 py-2 text-sm font-bold border-b-2 transition-colors ${configMode === 'REASONS' ? 'border-[#940910] text-[#940910]' : 'border-transparent text-slate-500 hover:text-[#404040]'}`}>Motivos de Ocorrência</button>
             <button onClick={() => setConfigMode('GEO')} className={`px-4 py-2 text-sm font-bold border-b-2 transition-colors ${configMode === 'GEO' ? 'border-[#940910] text-[#940910]' : 'border-transparent text-slate-500 hover:text-[#404040]'}`}>Estrutura Operacional</button>
+            <button onClick={() => setConfigMode('BRANDING')} className={`px-4 py-2 text-sm font-bold border-b-2 transition-colors ${configMode === 'BRANDING' ? 'border-[#940910] text-[#940910]' : 'border-transparent text-slate-500 hover:text-[#404040]'}`}>Personalização</button>
           </div>
 
+
+          {configMode === 'BRANDING' && (
+            <div className="space-y-6">
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-sm text-blue-800 flex items-start gap-3">
+                <Info className="shrink-0 mt-0.5" size={18} />
+                <div>
+                  <p className="font-bold">Personalização do Sistema</p>
+                  <p>Altere a imagem de fundo da tela de login. A imagem será salva na nuvem e atualizada para todos os usuários.</p>
+                </div>
+              </div>
+
+              <Card className="border border-slate-200 p-6">
+                <h3 className="font-bold text-lg text-[#404040] mb-4 flex items-center gap-2">
+                  <ImageIcon size={20} className="text-[#940910]" />
+                  Imagem de Fundo do Login
+                </h3>
+
+                <div className="flex flex-col md:flex-row gap-6 items-start">
+                  {/* Current Image Preview */}
+                  <div className="w-full md:w-1/3 aspect-video bg-slate-100 rounded-lg border border-slate-200 overflow-hidden relative group">
+                    <img
+                      src={SupabaseDB.getSystemAssetUrl('bg_login.png') + `?t=${Date.now()}`} // Force refresh
+                      alt="Fundo Atual"
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).src = '/bg-login.png'; // Fallback to local
+                      }}
+                    />
+                    <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                      <span className="text-white text-xs font-bold">Visualização Atual</span>
+                    </div>
+                  </div>
+
+                  {/* Upload Controls */}
+                  <div className="flex-1 space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-[#404040] mb-2">Carregar Nova Imagem</label>
+                      <div className="flex gap-2">
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-[#940910]/10 file:text-[#940910] hover:file:bg-[#940910]/20"
+                          onChange={async (e) => {
+                            const file = e.target.files?.[0];
+                            if (file) {
+                              if (file.size > 5 * 1024 * 1024) {
+                                alert("A imagem deve ter no máximo 5MB.");
+                                return;
+                              }
+
+                              if (confirm("Deseja definir esta imagem como fundo da tela de login?")) {
+                                try {
+                                  // Show loading state implicitly
+                                  e.target.value = ''; // Reset input
+                                  const result = await SupabaseDB.uploadSystemAsset(file);
+                                  if (result.success) {
+                                    alert("Imagem atualizada com sucesso! A mudança pode levar alguns instantes para aparecer.");
+                                    await refreshData(); // Re-render to update preview
+                                  } else {
+                                    alert(`Erro ao enviar imagem:\n${result.error}`);
+                                  }
+                                } catch (err: any) {
+                                  alert("Erro inesperado no upload.");
+                                }
+                              }
+                            }
+                          }}
+                        />
+                      </div>
+                      <p className="text-xs text-slate-500 mt-2">Recomendado: 1920x1080px (Full HD). Formatos: PNG, JPG, WEBP.</p>
+                    </div>
+
+                    <div className="pt-4 border-t border-slate-100">
+                      <p className="text-xs text-slate-400">
+                        Nota: Se receber erro de "Bucket not found", crie um bucket público chamado <code>system-assets</code> no painel do Supabase.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </Card>
+            </div>
+          )}
 
           {configMode === 'REASONS' && (
             <>

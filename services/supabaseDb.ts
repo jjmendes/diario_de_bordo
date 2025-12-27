@@ -843,5 +843,49 @@ export const SupabaseDB = {
             console.error("Critical Restore Error:", e);
             return { success: false, errors: [e.message] };
         }
+    },
+
+    // --- SYSTEM ASSETS (Storage) ---
+    async uploadSystemAsset(file: File, fileName: string = 'bg_login.png'): Promise<{ success: boolean; url?: string; error?: string }> {
+        try {
+            const bucket = 'system-assets';
+
+            // Upload file (replace if exists)
+            const { data, error } = await supabase.storage
+                .from(bucket)
+                .upload(fileName, file, {
+                    upsert: true,
+                    cacheControl: '3600'
+                });
+
+            if (error) {
+                // Try detecting if bucket missing
+                if (error.message.includes("bucket not found")) {
+                    return { success: false, error: "Bucket 'system-assets' não encontrado. Crie-o no painel do Supabase (Storage > New Bucket > 'system-assets' > Public)." };
+                }
+                throw error;
+            }
+
+            // Get Public URL
+            const { data: publicUrlData } = supabase.storage
+                .from(bucket)
+                .getPublicUrl(fileName);
+
+            // Add a timestamp to force refresh on clients
+            const finalUrl = `${publicUrlData.publicUrl}?t=${new Date().getTime()}`;
+
+            return { success: true, url: finalUrl };
+
+        } catch (e: any) {
+            console.error("Asset Upload Error:", e);
+            return { success: false, error: e.message || "Erro desconhecido no upload." };
+        }
+    },
+
+    getSystemAssetUrl(fileName: string = 'bg_login.png'): string {
+        const { data } = supabase.storage
+            .from('system-assets')
+            .getPublicUrl(fileName);
+        return data.publicUrl;
     }
 };
