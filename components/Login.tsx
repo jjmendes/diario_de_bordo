@@ -31,8 +31,12 @@ export const Login: React.FC<LoginProps> = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-100 p-4">
-      <div className="w-full max-w-md">
+    <div
+      className="min-h-screen flex items-center justify-center bg-slate-100 p-4 bg-cover bg-center relative"
+      style={{ backgroundImage: "url('/bg-login.png')" }}
+    >
+      <div className="absolute inset-0 bg-black/10 backdrop-blur-[1px]"></div> {/* Overlay for better contrast */}
+      <div className="w-full max-w-md relative z-10">
         <div className="text-center mb-8 flex flex-col items-center">
           <div className="bg-[#940910]/10 p-3 rounded-full mb-3">
             <ClipboardList size={32} className="text-[#940910]" strokeWidth={2.5} />
