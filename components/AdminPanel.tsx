@@ -859,6 +859,8 @@ export const AdminPanel: React.FC = () => {
           name: newUserProps.name,
           nickname: newUserProps.nickname,
           role: newUserProps.role,
+          email: newUserProps.email,
+          password: newUserProps.password,
           allowedClusters: newUserProps.allowedClusters,
           allowedBranches: newUserProps.allowedBranches
         };
