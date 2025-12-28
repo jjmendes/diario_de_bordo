@@ -350,7 +350,7 @@ export const Dashboard: React.FC<DashboardProps> = () => {
       </div>
 
       {/* --- KPI DETAILS MODAL --- */}
-      <Modal isOpen={!!detailsModalType} onClose={() => setDetailsModalType(null)} title={detailsModalType === 'PENDING' ? 'Pendentes (Amostra 100)' : 'Detalhes (Amostra 100)'}>
+      <Modal isOpen={!!detailsModalType} onClose={() => setDetailsModalType(null)} title={detailsModalType === 'PENDING' ? 'Pendentes' : 'Detalhes'}>
         <div className="max-h-[60vh] overflow-y-auto">
           {loadingModal ? (
             <div className="p-10 text-center text-slate-500"><Loader2 className="animate-spin mb-2 mx-auto" /> Carregando lista...</div>
