@@ -36,6 +36,13 @@ export const AdminTeamManagement: React.FC<AdminTeamManagementProps> = ({
     const [gestorClusterFilter, setGestorClusterFilter] = useState('');
     const [gestorBranchFilter, setGestorBranchFilter] = useState('');
 
+    // Filters for Team (Technicians)
+    const [teamGerenteFilter, setTeamGerenteFilter] = useState('');
+    const [teamCoordenadorFilter, setTeamCoordenadorFilter] = useState('');
+    const [teamSupervisorFilter, setTeamSupervisorFilter] = useState('');
+    const [teamClusterFilter, setTeamClusterFilter] = useState('');
+    const [teamBranchFilter, setTeamBranchFilter] = useState('');
+
     // Form Fields
     const [newTeamName, setNewTeamName] = useState('');
     const [newTeamId, setNewTeamId] = useState('');
@@ -116,11 +123,24 @@ export const AdminTeamManagement: React.FC<AdminTeamManagementProps> = ({
 
         if (!matchesSearch) return false;
 
-        // 3. Gestor Filters
-        if (gestorClusterFilter && m.cluster !== gestorClusterFilter) return false;
-        if (gestorBranchFilter && m.filial !== gestorBranchFilter) return false;
+        // 3. Gestor Filters (only for GESTORES mode)
+        if (mode === 'GESTORES') {
+            if (gestorClusterFilter && m.cluster !== gestorClusterFilter) return false;
+            if (gestorBranchFilter && m.filial !== gestorBranchFilter) return false;
+        }
 
-        // 4. Team Errors (only for TEAM mode)
+        // 4. Team Filters (only for TEAM mode)
+        if (mode === 'TEAM') {
+            if (teamGerenteFilter && m.gerenteId !== teamGerenteFilter) return false;
+            if (teamCoordenadorFilter && m.coordenadorId !== teamCoordenadorFilter) return false;
+            // Handle Supervisor Filter - check exact ID match
+            if (teamSupervisorFilter && m.supervisorId !== teamSupervisorFilter) return false;
+
+            if (teamClusterFilter && m.cluster !== teamClusterFilter) return false;
+            if (teamBranchFilter && m.filial !== teamBranchFilter) return false;
+        }
+
+        // 5. Team Errors (only for TEAM mode)
         if (mode === 'TEAM' && showTeamErrorsOnly) {
             const hasError = !m.supervisorId || !isSupervisorValid(m.supervisorId);
             if (!hasError) return false;
@@ -506,6 +526,42 @@ export const AdminTeamManagement: React.FC<AdminTeamManagementProps> = ({
                                     placeholder="Filial"
                                 />
                             </div>
+                        </div>
+                    )}
+
+                    {/* Filters for Team (Technicians) */}
+                    {mode === 'TEAM' && (
+                        <div className="grid grid-cols-5 gap-2 flex-1 mx-4">
+                            <CustomSelect
+                                value={teamGerenteFilter}
+                                onChange={setTeamGerenteFilter}
+                                options={[{ label: 'Gerente (Todos)', value: '' }, ...managers.map(m => ({ label: m.name.split(' ')[0], value: m.id }))]}
+                                placeholder="Gerente"
+                            />
+                            <CustomSelect
+                                value={teamCoordenadorFilter}
+                                onChange={setTeamCoordenadorFilter}
+                                options={[{ label: 'Coord. (Todos)', value: '' }, ...coordinators.map(c => ({ label: c.name.split(' ')[0], value: c.id }))]}
+                                placeholder="Coord."
+                            />
+                            <CustomSelect
+                                value={teamSupervisorFilter}
+                                onChange={setTeamSupervisorFilter}
+                                options={[{ label: 'Sup. (Todos)', value: '' }, ...supervisors.map(s => ({ label: s.name.split(' ')[0], value: s.id }))]}
+                                placeholder="Supervisor"
+                            />
+                            <CustomSelect
+                                value={teamClusterFilter}
+                                onChange={(val) => { setTeamClusterFilter(val); setTeamBranchFilter(''); }}
+                                options={[{ label: 'Cluster', value: '' }, ...uniqueClusters.map(c => ({ label: c, value: c }))]}
+                                placeholder="Cluster"
+                            />
+                            <CustomSelect
+                                value={teamBranchFilter}
+                                onChange={setTeamBranchFilter}
+                                options={[{ label: 'Filial', value: '' }, ...Array.from(new Set(data.filter(m => !teamClusterFilter || m.cluster === teamClusterFilter).map(m => m.filial).filter(Boolean))).sort().map(b => ({ label: b, value: b }))]}
+                                placeholder="Filial"
+                            />
                         </div>
                     )}
                     <div className="flex items-center gap-3">
