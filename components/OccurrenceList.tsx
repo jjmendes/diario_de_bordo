@@ -520,10 +520,11 @@ export const OccurrenceList: React.FC<OccurrenceListProps> = ({ users = [], curr
                 <th className="px-1.5 py-2 w-[140px] border-r border-white/20">Motivo</th>
                 <th className="px-1.5 py-2 w-[105px] border-r border-white/20">Recorrência</th>
                 <th className="px-1.5 py-2 w-[85px] text-center border-r border-white/20">Status</th>
-                <th className="px-1.5 py-2 text-center w-[90px]">Ações</th>
+                <th className="px-1.5 py-2 text-center w-[65px]">Ações</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200">
+
               {occurrences.map(o => {
                 const canEdit = o.status !== OccurrenceStatus.CONCLUIDA && o.status !== OccurrenceStatus.CANCELADA;
                 return (
@@ -568,7 +569,7 @@ export const OccurrenceList: React.FC<OccurrenceListProps> = ({ users = [], curr
                     </td>
                     <td className="px-1.5 py-2 text-center"><Badge status={o.status} /></td>
                     <td className="px-1 py-2">
-                      <div className="flex flex-nowrap gap-0.5 justify-center">
+                      <div className="flex flex-wrap gap-0.5 justify-center">
                         {canEdit && (
                           <button onClick={() => onEdit(o)} className="p-1 text-slate-500 hover:text-[#940910] hover:bg-red-50 rounded" title="Editar">
                             <Pencil size={12} />
