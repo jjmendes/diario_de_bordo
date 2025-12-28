@@ -512,7 +512,7 @@ export const OccurrenceList: React.FC<OccurrenceListProps> = ({ users = [], curr
             <thead className="bg-[#940910] text-white font-bold border-b border-[#940910]">
               <tr>
                 <th className="px-1.5 py-2 w-[75px] border-r border-white/20">Data/Hora</th>
-                <th className="px-1.5 py-2 w-[90px] border-r border-white/20">Usuário</th>
+                <th className="px-1.5 py-2 w-[65px] border-r border-white/20">Usuário</th>
                 <th className="px-1.5 py-2 w-[75px] border-r border-white/20">Cluster</th>
                 <th className="px-1.5 py-2 w-[100px] border-r border-white/20">Filial/Setor</th>
                 <th className="px-1.5 py-2 w-[100px] border-r border-white/20">Técnico</th>
@@ -520,7 +520,7 @@ export const OccurrenceList: React.FC<OccurrenceListProps> = ({ users = [], curr
                 <th className="px-1.5 py-2 w-[140px] border-r border-white/20">Motivo</th>
                 <th className="px-1.5 py-2 w-[105px] border-r border-white/20">Recorrência</th>
                 <th className="px-1.5 py-2 w-[85px] text-center border-r border-white/20">Status</th>
-                <th className="px-1.5 py-2 text-center w-[60px]">Ações</th>
+                <th className="px-1.5 py-2 text-center w-[90px]">Ações</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200">
@@ -544,7 +544,7 @@ export const OccurrenceList: React.FC<OccurrenceListProps> = ({ users = [], curr
                       <div className="font-bold text-[10px] text-[#404040] truncate" title={o.branch}>{o.branch || '-'}</div>
                       <div className="text-[9px] text-slate-500 truncate" title={o.sector}>{o.sector || '-'}</div>
                     </td>
-                    <td className="px-1.5 py-2 text-[#404040] truncate font-medium" title={o.userName}>{o.userName}</td>
+                    <td className="px-1.5 py-2 text-[#404040] font-medium whitespace-normal leading-tight" title={o.userName}>{o.userName}</td>
                     <td className="px-1.5 py-2">
                       <div className="font-medium text-[#404040] line-clamp-2 leading-tight" title={o.category}>{o.category}</div>
                     </td>
@@ -568,7 +568,7 @@ export const OccurrenceList: React.FC<OccurrenceListProps> = ({ users = [], curr
                     </td>
                     <td className="px-1.5 py-2 text-center"><Badge status={o.status} /></td>
                     <td className="px-1 py-2">
-                      <div className="flex flex-wrap gap-0.5 justify-center">
+                      <div className="flex flex-nowrap gap-0.5 justify-center">
                         {canEdit && (
                           <button onClick={() => onEdit(o)} className="p-1 text-slate-500 hover:text-[#940910] hover:bg-red-50 rounded" title="Editar">
                             <Pencil size={12} />
