@@ -523,14 +523,20 @@ export const SupabaseDB = {
         let updatedCount = 0;
         const upsertList: any[] = [];
 
-        // If replace mode, we might need to delete old technicians first? 
-        // Supabase replace is tricky safely. Let's assume we just Upsert for now, or Delete filtered by role if Replace.
-        // For safety in this migration script, we will just UpSert and maybe warn. 
-        // IF user really wants REPLACE, we should delete all technicians first from DB?
+        // If replace mode, we DO NOT delete records to preserve history.
+        // Instead, we mark ALL existing technicians as INACTIVE. 
+        // Then, the CSV import will "reactivate" only those present in the file (via upsert active: true).
         if (mode === 'REPLACE') {
-            // Danger: deleting all technicians. Let's do it only if explicitly requested.
-            const { error } = await supabase.from('team_members').delete().eq('role', 'TECNICO');
-            if (error) console.error("Error clearing technicians for replace:", error);
+            const { error } = await supabase
+                .from('team_members')
+                .update({ active: false })
+                .eq('role', 'TECNICO');
+
+            if (error) {
+                console.error("Error deactivating technicians for replacement:", error);
+                errors.push("Falha ao desativar base antiga: " + error.message);
+                return { total: 0, updated: 0, new: 0, errors };
+            }
         }
 
         lines.forEach((line, index) => {
