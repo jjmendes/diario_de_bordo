@@ -36,9 +36,9 @@ const AppContent = () => {
 
   const fetchOccurrences = async () => {
     setLoadingOccurrences(true);
-    // Fetch a large number for Dashboard stats (temporary until Dashboard is refactored)
-    const { data } = await SupabaseDB.getOccurrences({}, 0, 1000);
-    setOccurrences(data);
+    // Legacy: Dashboard and List now fetch their own data via RPC/Pagination.
+    // We no longer need to fetch 1000 rows here.
+    setOccurrences([]);
     setLoadingOccurrences(false);
   };
 
@@ -209,7 +209,7 @@ const AppContent = () => {
               {loadingOccurrences ? (
                 <div className="text-center py-10 text-slate-500">Carregando dados do painel...</div>
               ) : (
-                <Dashboard occurrences={occurrences} />
+                <Dashboard />
               )}
 
 

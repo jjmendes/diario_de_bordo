@@ -270,6 +270,41 @@ export const SupabaseDB = {
         return { data: mappedData, count: count || 0 };
     },
 
+
+    // --- DASHBOARD ANALYTICS (RPC) ---
+
+    async getDashboardMetrics(filters: { startDate: string, endDate: string, cluster?: string, branch?: string, sector?: string }): Promise<any> {
+        const { data, error } = await supabase.rpc('get_dashboard_metrics', {
+            p_start_date: filters.startDate,
+            p_end_date: filters.endDate,
+            p_cluster: filters.cluster,
+            p_branch: filters.branch,
+            p_sector: filters.sector
+        });
+
+        if (error) {
+            console.error("Error fetching dashboard metrics:", error);
+            // Return empty structure to avoid crash
+            return { kpi: { total: 0, treated: 0, pending: 0 }, category_counts: [], pareto_reasons: [], matrix_category: [], matrix_cluster: [] };
+        }
+        return data;
+    },
+
+    async getTechnicianRanking(filters: { year?: string, month?: string, category?: string, reason?: string }): Promise<any[]> {
+        const { data, error } = await supabase.rpc('get_technician_ranking', {
+            p_year: filters.year,
+            p_month: filters.month,
+            p_category: filters.category,
+            p_reason: filters.reason
+        });
+
+        if (error) {
+            console.error("Error fetching ranking:", error);
+            return [];
+        }
+        return data;
+    },
+
     async saveOccurrence(occurrence: Occurrence): Promise<void> {
         // 1. Sanitize ID for UUID format if it's a temp local ID
         let id = occurrence.id;
