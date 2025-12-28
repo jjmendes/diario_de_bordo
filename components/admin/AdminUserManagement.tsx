@@ -364,37 +364,29 @@ export const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
             )}
 
             <Card className="overflow-hidden border-slate-200 shadow-sm">
-                <div className="p-4 border-b border-slate-100 bg-slate-50/50 flex flex-col sm:flex-row justify-between items-center gap-4">
-                    <h3 className="font-bold text-slate-700 flex items-center gap-2">
+                <div className="px-6 py-4 border-b border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <h3 className="font-bold text-[#404040] text-lg flex items-center gap-2">
                         Usuários Cadastrados no Sistema <span className="text-xs font-normal text-slate-500 bg-slate-200 px-2 py-0.5 rounded-full">{filteredUsers.length}</span>
                     </h3>
 
-                    <div className="flex items-center gap-2 w-full sm:w-auto">
-                        <div className="relative flex-1 sm:w-64">
-                            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                    <div className="flex items-center gap-3">
+                        <div className="relative">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
                             <input
                                 type="text"
                                 placeholder="Buscar usuários..."
                                 value={searchTerm}
                                 onChange={e => setSearchTerm(e.target.value)}
-                                className="w-full pl-9 pr-4 py-1.5 text-sm border border-slate-200 rounded-md focus:outline-none focus:ring-2 focus:ring-[#940910]/20 focus:border-[#940910]"
+                                className="pl-9 pr-4 py-1.5 border rounded-md text-sm w-full md:w-64 focus:ring-1 focus:ring-[#940910] outline-none"
                             />
                         </div>
 
-                        <div className="h-6 w-px bg-slate-300 mx-1"></div>
-
-                        {/* Action Icons */}
-                        <Button variant="ghost" size="icon" onClick={handleDownloadUserTemplate} title="Baixar Modelo CSV">
-                            <FileDown size={18} className="text-slate-500 hover:text-slate-700" />
-                        </Button>
-                        <Button variant="ghost" size="icon" onClick={() => userFileInputRef.current?.click()} title="Importar CSV">
-                            <Upload size={18} className="text-slate-500 hover:text-slate-700" />
-                        </Button>
-                        <input type="file" ref={userFileInputRef} className="hidden" accept=".csv,.txt" onChange={handleFileSelect} />
-
-                        <Button variant="ghost" size="icon" onClick={handleExportUsers} title="Exportar Lista">
-                            <Download size={18} className="text-slate-500 hover:text-slate-700" />
-                        </Button>
+                        <div className="flex items-center gap-1 pl-2 border-l border-slate-200">
+                            <button onClick={handleExportUsers} className="p-2 rounded hover:bg-slate-100 text-slate-500 transition-colors" title="Exportar Lista"><Download size={18} /></button>
+                            <button onClick={handleDownloadUserTemplate} className="p-2 rounded hover:bg-slate-100 text-slate-500 transition-colors" title="Baixar Modelo CSV"><FileDown size={18} /></button>
+                            <button onClick={() => userFileInputRef.current?.click()} className="p-2 rounded hover:bg-red-50 text-[#940910] transition-colors" title="Importar CSV"><Upload size={18} /></button>
+                            <input type="file" ref={userFileInputRef} className="hidden" accept=".csv,.txt" onChange={handleFileSelect} />
+                        </div>
                     </div>
                 </div>
 
