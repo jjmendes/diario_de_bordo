@@ -63,7 +63,8 @@ export const AdminTeamManagement: React.FC<AdminTeamManagementProps> = ({
 
     const isSupervisorValid = (supId?: string) => {
         if (!supId) return false;
-        return users.some(u => u.id.toLowerCase() === supId.toLowerCase());
+        // Valida se o ID existe na lista de Gestores/Equipe (Hierarquia)
+        return teamMembers.some(m => String(m.id).trim().toLowerCase() === String(supId).trim().toLowerCase());
     };
 
     const getSupervisorName = (supId?: string) => {
