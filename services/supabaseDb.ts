@@ -9,6 +9,36 @@ const CACHE_KEYS = {
 
 export const SupabaseDB = {
 
+    // --- HELPER: Get Subordinates ---
+    async getSubordinateIds(managerId: string): Promise<string[]> {
+        // 1. Resolve effective ID (if linked to a team member)
+        // If the user logging in (managerId = auth.uid) is linked to a specific Team Member ID, use that.
+        // Otherwise fallback to managerId (for legacy or direct matches).
+        let effectiveId = String(managerId).trim();
+
+        const { data: profile } = await supabase
+            .from('profiles')
+            .select('team_member_id')
+            .eq('id', managerId)
+            .single();
+
+        if (profile?.team_member_id) {
+            effectiveId = profile.team_member_id;
+        }
+
+        // 2. Fetch all team members where effectiveId appears in hierarchy
+        const { data, error } = await supabase
+            .from('team_members')
+            .select('id')
+            .or(`supervisor_id.eq.${effectiveId},coordenador_id.eq.${effectiveId},gerente_id.eq.${effectiveId},controlador_id.eq.${effectiveId}`);
+
+        if (error) {
+            console.error('Error fetching subordinates:', error);
+            return [];
+        }
+        return data.map(m => m.id);
+    },
+
     // --- USER MANAGEMENT (Profiles) ---
     // Users are managed via Auth, but extra data is in 'profiles'
 
@@ -31,26 +61,39 @@ export const SupabaseDB = {
             role: p.role as any,
             avatar: p.avatar_url,
             allowedClusters: p.allowed_clusters || [],
-            allowedBranches: p.allowed_branches || []
+            allowedBranches: p.allowed_branches || [],
+            teamMemberId: p.team_member_id // Return linked ID
         }));
     },
 
     async updateUser(user: Partial<User>): Promise<void> {
         if (!user.id) return;
 
-        // Use RPC to update both auth.users and profiles atomically
-        const { error } = await supabase.rpc('admin_update_user', {
-            target_user_id: user.id,
+        // Use RPC V2 to update (upsert)
+        const { error } = await supabase.rpc('admin_upsert_profile_v2', {
+            target_id: user.id,
             new_email: user.email,
-            new_password: user.password || '', // Empty string = don't change
             new_name: user.name,
             new_nickname: user.nickname,
             new_role: user.role,
             new_clusters: user.allowedClusters,
-            new_branches: user.allowedBranches
+            new_branches: user.allowedBranches,
+            new_team_member_id: user.teamMemberId ?? null
         });
 
         if (error) throw error;
+
+        // 2b. Update Avatar separately (RPC signature doesn't support it)
+        if (user.avatar !== undefined) {
+            const { error: avatarError } = await supabase
+                .from('profiles')
+                .update({ avatar_url: user.avatar })
+                .eq('id', user.id);
+
+            if (avatarError) {
+                console.warn('Avatar update failed (RLS?):', avatarError);
+            }
+        }
     },
 
     async deleteUser(userId: string): Promise<void> {
@@ -66,18 +109,18 @@ export const SupabaseDB = {
         role: string;
         allowedClusters: string[];
         allowedBranches: string[];
+        teamMemberId?: string; // Add link ID
     }): Promise<{ success: boolean; error?: string; userId?: string }> {
         try {
             // WORKAROUND: Client-side creation without logging out current admin
-            // We create a temporary client instance just for this operation
             const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
             const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-            // @ts-ignore - Dynamic import to avoid circular dependency if needed, but here we just use the class
+            // @ts-ignore
             const { createClient } = await import('@supabase/supabase-js');
             const tempClient = createClient(supabaseUrl, supabaseAnonKey);
 
-            // 1. Create auth user using public signUp (requires "Allow new users to sign up" ON)
+            // 1. Create auth user using public signUp
             const { data: authData, error: authError } = await tempClient.auth.signUp({
                 email: userData.email,
                 password: userData.password,
@@ -94,25 +137,25 @@ export const SupabaseDB = {
                 return { success: false, error: authError?.message || 'Failed to create auth user' };
             }
 
-            // 2. Create/Update profile with permissions using MAIN client (Admin privileges)
-            // Even though signUp might create the user, the profile trigger might not have set all fields, or we need to update role.
-            const { error: profileError } = await supabase
-                .from('profiles')
-                .upsert({
-                    id: authData.user.id,
-                    name: userData.name,
-                    nickname: userData.nickname,
-                    email: userData.email, // Ensure email is in profile for reference
-                    role: userData.role,
-                    allowed_clusters: userData.allowedClusters,
-                    allowed_branches: userData.allowedBranches,
-                    avatar_url: null
-                });
+            // 2. Update profile using RPC V2
+            // Supports 'team_member_id' linking
+            const { error: rpcError } = await supabase.rpc('admin_upsert_profile_v2', {
+                target_id: authData.user.id,
+                new_email: userData.email,
+                new_name: userData.name,
+                new_nickname: userData.nickname,
+                new_role: userData.role,
+                new_clusters: userData.allowedClusters,
+                new_branches: userData.allowedBranches,
+                new_team_member_id: userData.teamMemberId
+            });
 
-            if (profileError) {
-                console.error('Profile creation error:', profileError);
-                // Note: We cannot easily delete the user with Anon key, so we just return error
-                return { success: false, error: 'User created but profile failed: ' + profileError.message };
+            if (rpcError) {
+                console.error('Profile update (RPC) error:', rpcError);
+                // Try fallback to manual upsert only if RPC failed (e.g. if RPC doesn't exist)
+                // usage of previous upsert logic here as absolute last resort, 
+                // but usually RPC is the fix for RLS.
+                return { success: false, error: 'User created but profile update failed: ' + rpcError.message };
             }
 
             return { success: true, userId: authData.user.id };
@@ -124,23 +167,87 @@ export const SupabaseDB = {
 
     // --- OCCURRENCES ---
 
-    async getOccurrences(): Promise<Occurrence[]> {
-        // Join with team_members to get technician name
-        const { data, error } = await supabase
+    async getOccurrences(
+        filters?: {
+            startDate?: string;
+            endDate?: string;
+            status?: string;
+            cluster?: string;
+            branch?: string;
+            search?: string;
+            technicianId?: string; // Explicit technician filter
+        },
+        page: number = 0,
+        pageSize: number = 50,
+        viewingUser?: { id: string, role: string } // Context for permission filtering
+    ): Promise<{ data: Occurrence[], count: number }> {
+
+        // Base query with exact count
+        let query = supabase
             .from('occurrences')
             .select(`
-    *,
-    team_members: technician_id(name)
-      `)
+                *,
+                team_members: technician_id(name)
+            `, { count: 'exact' });
+
+        // --- HIERARCHY PERMISSION FILTER ---
+        if (viewingUser && viewingUser.role !== 'ADMIN') {
+            // Logic: Users see occurrences where technician_id is in their "subordinates list"
+            // OR where they are the technician (if they are a technician).
+            // OR if they are CONTROLADOR, do they see all? Assuming Controller sees all for simplicity explicitly unless restricted.
+            // Assumption: Role 'CONTROLADOR' sees all? Or limited to Cluster? 
+            // Current code in AdminPanel passes 'allowedClusters' to users. 
+            // If viewingUser has allowedClusters, filter by cluster.
+
+            // 1. Filter by Assigned Clusters (if any)
+            // We need to fetch user profile to get allowed_clusters if not passed? 
+            // Assuming 'viewingUser' passed here is generic, might usually fetch allowed_clusters.
+            // But let's verify Hierarchy.
+
+            // If Role is SUPERVISOR, COORDENADOR, GERENTE:
+            if (['SUPERVISOR', 'COORDENADOR', 'GERENTE'].includes(viewingUser.role)) {
+                const subIds = await this.getSubordinateIds(viewingUser.id);
+                // Include self as well? Usually yes.
+                subIds.push(viewingUser.id);
+                query = query.in('technician_id', subIds);
+            }
+            // Controladores usually filtered by Cluster/Branch via `filters` which are set by UI based on profile.
+            // If filters.cluster is set, it handles it.
+        }
+
+        // Apply filters
+        if (filters?.startDate) query = query.gte('date', filters.startDate);
+        if (filters?.endDate) query = query.lte('date', filters.endDate);
+        if (filters?.status && filters.status !== 'ALL') query = query.eq('status', filters.status);
+        if (filters?.cluster && filters.cluster !== 'ALL') query = query.eq('cluster', filters.cluster);
+        if (filters?.branch && filters.branch !== 'ALL') query = query.eq('branch', filters.branch);
+        if (filters?.technicianId) query = query.eq('technician_id', filters.technicianId); // Specific filter
+
+        if (filters?.search) {
+            // Simplified search on specific text columns
+            const s = filters.search;
+            query = query.or(`description.ilike.%${s}%,reason.ilike.%${s}%`);
+            // Note: searching ID or joined name is harder with simple OR syntax. 
+            // keeping it simple for performance.
+        }
+
+        // Pagination
+        const from = page * pageSize;
+        const to = from + pageSize - 1;
+
+        query = query
             .order('date', { ascending: false })
-            .order('time', { ascending: false });
+            .order('time', { ascending: false })
+            .range(from, to);
+
+        const { data, error, count } = await query;
 
         if (error) {
             console.error('Error fetching occurrences:', error);
-            return [];
+            return { data: [], count: 0 };
         }
 
-        return data.map(o => ({
+        const mappedData = data.map(o => ({
             id: o.id,
             userId: o.technician_id,
             userName: o.team_members?.name || 'Técnico', // Flatten joined data
@@ -159,6 +266,8 @@ export const SupabaseDB = {
             auditTrail: o.audit_trail || [],
             feedback: o.feedback,
         }));
+
+        return { data: mappedData, count: count || 0 };
     },
 
     async saveOccurrence(occurrence: Occurrence): Promise<void> {
@@ -228,23 +337,56 @@ export const SupabaseDB = {
     // --- TEAM MEMBERS ---
 
     async getMyTeam(currentUserId: string, role: string): Promise<TeamMember[]> {
-        // If Admin, return all. If not, filtered logic could be Applied via RLS or here.
-        // Currently RLS allows read all for auth users, so we can filter client side or via query.
+        // 1. If Admin, return all.
+        if (role === 'ADMIN') {
+            const { data, error } = await supabase.from('team_members').select('*');
+            if (error) {
+                console.error('Error fetching team for admin:', error);
+                return [];
+            }
+            return data.map(m => ({
+                id: m.id,
+                name: m.name,
+                role: m.role as TeamMemberRole,
+                reportsToId: m.reports_to_id,
+                supervisorId: m.supervisor_id,
+                coordenadorId: m.coordenador_id,
+                gerenteId: m.gerente_id,
+                controladorId: m.controlador_id,
+                cluster: m.cluster,
+                filial: m.filial,
+                segment: m.segment,
+                active: m.active
+            }));
+        }
 
-        let query = supabase.from('team_members').select('*');
+        // 2. Non-Admin: Fetch User Profile to get their "Control Code" (team_member_id)
+        const { data: profile, error: profileError } = await supabase
+            .from('profiles')
+            .select('team_member_id')
+            .eq('id', currentUserId)
+            .single();
 
-        // Implement filter if needed, but for now fetching all is safer to match MockDB behavior 
-        // where the frontend usually allows seeing the whole team or filtering later.
-        // Optimization: If dataset is huge, add filters here.
-
-        const { data, error } = await query;
-
-        if (error) {
-            console.error(error);
+        if (profileError || !profile?.team_member_id) {
+            console.warn('User has no Linked Code (team_member_id). Returning empty list.', profileError);
             return [];
         }
 
-        const members = data.map(m => ({
+        // 3. Filter team members where technician's "Controlador Code" matches user's code
+        // The column in team_members is 'controlador_id' (which stores the 4-digit code)
+        const code = profile.team_member_id;
+
+        const { data, error } = await supabase
+            .from('team_members')
+            .select('*')
+            .or(`supervisor_id.eq.${code},coordenador_id.eq.${code},gerente_id.eq.${code},controlador_id.eq.${code}`);
+
+        if (error) {
+            console.error('Error fetching team for user:', error);
+            return [];
+        }
+
+        return data.map(m => ({
             id: m.id,
             name: m.name,
             role: m.role as TeamMemberRole,
@@ -258,15 +400,6 @@ export const SupabaseDB = {
             segment: m.segment,
             active: m.active
         }));
-
-        if (role === 'ADMIN') return members;
-
-        // Simple recursive filter could go here if needed, but frontend `EditOccurrenceForm` does it usually?
-        // MockDB.getMyTeam did filter. Let's replicate simple direct report filter:
-        return members.filter(m => m.reportsToId === currentUserId || m.id === currentUserId || role === 'ADMIN');
-        // Actually typically we want the whole tree. For now returning ALL is safer to avoid empty lists.
-        // Let's rely on the frontend to filter or return keys.
-        return members;
     },
 
     async addTeamMember(member: TeamMember): Promise<void> {
@@ -584,11 +717,20 @@ export const SupabaseDB = {
                 errors.push(error.message);
             }
         }
-
         return { total: newCount + updatedCount, updated: updatedCount, new: newCount, errors };
     },
 
-    async importOccurrencesFromCsv(csvContent: string): Promise<{ total: number, new: number, errors: string[] }> {
+    async importOccurrencesFromCsv(csvContent: string, mode: 'MERGE' | 'REPLACE' = 'MERGE'): Promise<{ total: number, new: number, errors: string[] }> {
+        // Fetch geo for mapping
+        const geoHierarchy = await SupabaseDB.getGeoHierarchy();
+        // Create quick lookup map: BranchName -> ClusterName
+        const branchToClusterMap: Record<string, string> = {};
+        geoHierarchy.forEach(c => {
+            c.branches.forEach(b => {
+                branchToClusterMap[b.name.toUpperCase()] = c.name; // Uppercase key for case-insensitive lookup
+            });
+        });
+
         const cleanCsvString = (str: string | undefined): string => {
             if (!str) return '';
             return str.replace(/^["']|["']$/g, '').replace(/"/g, '').trim();
@@ -600,7 +742,21 @@ export const SupabaseDB = {
 
         if (lines.length === 0) return { total: 0, new: 0, errors: ['Arquivo vazio'] };
 
-        // Detect separator
+        // REPLACE MODE: Delete all occurrences first? 
+        // Logic in MockDB was: `currentOccurrences = []`.
+        // In Supabase, this is dangerous. Let's assume naive REPLACE means "Delete all".
+        // BUT, usually bulk import just appends or updates. 
+        // Given the prompt "Import" usually implies append. 
+        // If mode is 'REPLACE', we might want to warn or just ignore (MockDB implementation did clear it).
+        if (mode === 'REPLACE') {
+            const { error } = await supabase.from('occurrences').delete().neq('id', '00000000-0000-0000-0000-000000000000'); // Delete all
+            if (error) {
+                console.error("Error clearing occurrences for replace:", error);
+                errors.push("Falha ao limpar banco de dados para substituição: " + error.message);
+                return { total: 0, new: 0, errors };
+            }
+        }
+
         const sampleSize = Math.min(lines.length, 5);
         let semicolonCount = 0;
         let commaCount = 0;
@@ -613,84 +769,57 @@ export const SupabaseDB = {
         let newCount = 0;
         const insertList: any[] = [];
 
-        // Fetch all team members to resolve technician names to IDs
-        const teamMembers = await SupabaseDB.getMyTeam('admin', 'ADMIN');
-        const teamMemberMap = new Map<string, string>(); // name -> id
-        teamMembers.forEach(m => teamMemberMap.set(m.name.toLowerCase(), m.id));
-
         lines.forEach((line, index) => {
             if (index === 0) return; // Skip header
+
             const parts = line.split(separator).map(cleanCsvString);
 
-            // Expected CSV format:
-            // Data;Hora;Técnico;Registrado Por;Categoria;Motivo;Descrição;Status;Nível de Escalonamento;Cluster;Filial;Setor;Localização;Feedback
-            if (parts.length >= 13) {
-                const dateStr = parts[0];
-                const timeStr = parts[1];
-                const technicianName = parts[2];
-                const registeredByName = parts[3]; // Assuming this is also a team member name
+            // Expected: Data; Hora; ID Tecnico; Nome Tecnico; Categoria; Motivo; Descricao; Filial; Setor; Status?
+            // MockDB checked length >= 6
+            if (parts.length >= 6) {
+                const date = parts[0];
+                const time = parts[1];
+                const technicianId = parts[2];
+                // const technicianName = parts[3]; // Not stored in DB, relational
                 const category = parts[4];
                 const reason = parts[5];
-                const description = parts[6];
-                const statusStr = parts[7];
-                const escalationLevelStr = parts[8];
-                const cluster = parts[9];
-                const branch = parts[10];
-                const sector = parts[11];
-                const location = parts[12];
-                const feedback = parts[13] || '';
+                const description = parts[6] || '';
+                const branch = parts[7] || '';
+                const sector = parts[8] || '';
+                const statusStr = parts[9] || 'REGISTRADA';
 
-                const technicianId = teamMemberMap.get(technicianName.toLowerCase());
-                const registeredById = teamMemberMap.get(registeredByName.toLowerCase());
+                if (date && technicianId && category) {
+                    const derivedCluster = branch ? (branchToClusterMap[branch.toUpperCase()] || 'OUTROS') : '';
 
-                if (!technicianId) {
-                    errors.push(`Linha ${index + 1}: Técnico "${technicianName}" não encontrado.`);
-                    return;
+                    const newOccPayload = {
+                        // id: generated by DB
+                        technician_id: technicianId,
+                        registered_by: 'IMPORTACAO',
+                        date,
+                        time,
+                        category,
+                        reason,
+                        description,
+                        status: statusStr.toUpperCase() as OccurrenceStatus || OccurrenceStatus.REGISTRADA,
+                        escalation_level: 'NONE', // Default
+                        branch,
+                        sector,
+                        cluster: derivedCluster,
+                        audit_trail: [{
+                            id: `aud_${Date.now()}_${index}`,
+                            date: new Date().toISOString(),
+                            action: 'IMPORTACAO',
+                            user: 'Sistema',
+                            details: 'Importado via CSV'
+                        }]
+                    };
+                    insertList.push(newOccPayload);
+                    newCount++;
+                } else {
+                    errors.push(`Linha ${index + 1}: Faltando dados obrigatórios (Data, ID Técnico ou Categoria)`);
                 }
-                if (!registeredById) {
-                    errors.push(`Linha ${index + 1}: Usuário "Registrado Por" "${registeredByName}" não encontrado.`);
-                    return;
-                }
-
-                const dateParts = dateStr.split('/');
-                if (dateParts.length !== 3) {
-                    errors.push(`Linha ${index + 1}: Formato de data inválido "${dateStr}". Esperado DD/MM/YYYY.`);
-                    return;
-                }
-                const formattedDate = `${dateParts[2]}-${dateParts[1]}-${dateParts[0]}`; // YYYY-MM-DD
-
-
-                let status: OccurrenceStatus = OccurrenceStatus.REGISTRADA;
-                if (statusStr.toLowerCase().includes('concl')) status = OccurrenceStatus.CONCLUIDA;
-                if (statusStr.toLowerCase().includes('cancel')) status = OccurrenceStatus.CANCELADA;
-                if (statusStr.toLowerCase().includes('analise')) status = OccurrenceStatus.EM_ANALISE;
-
-                // Map escalation strings or keep integer if that's what backend expects? 
-                // Backend expects text or string for escalation_level probably? 
-                // Types say EscalationLevel is enum of strings.
-                // CSV parsing usually gives string.
-                const escalationLevel = escalationLevelStr as any;
-
-                newCount++;
-                insertList.push({
-                    technician_id: technicianId,
-                    registered_by: registeredById,
-                    date: formattedDate,
-                    time: timeStr,
-                    category: category,
-                    reason: reason,
-                    description: description,
-                    status: status,
-                    escalation_level: escalationLevel,
-                    cluster: cluster,
-                    branch: branch,
-                    sector: sector,
-                    location: location,
-                    feedback: feedback,
-                    audit_trail: [{ timestamp: new Date().toISOString(), userId: registeredById, action: 'Imported' }]
-                });
             } else {
-                errors.push(`Linha ${index + 1}: Colunas insuficientes. Esperado pelo menos 13.`);
+                errors.push(`Linha ${index + 1}: Colunas insuficientes`);
             }
         });
 
@@ -700,14 +829,16 @@ export const SupabaseDB = {
                 const chunk = insertList.slice(i, i + chunkSize);
                 const { error } = await supabase.from('occurrences').insert(chunk);
                 if (error) {
-                    console.error("Batch insert error (occurrences):", error);
-                    errors.push(`Erro ao salvar lote de ocorrências iniciando em ${i}: ${error.details || error.message}`);
+                    console.error("Batch insert error:", error);
+                    errors.push(`Erro ao salvar lote iniciando em ${i}: ${error.details || error.message}`);
                 }
             }
         }
 
         return { total: newCount, new: newCount, errors };
     },
+
+
 
     async updateCurrentUserPassword(newPassword: string): Promise<void> {
         const { error } = await supabase.auth.updateUser({ password: newPassword });

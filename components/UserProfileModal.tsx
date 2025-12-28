@@ -70,7 +70,11 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onCl
             onClose();
         } catch (e: any) {
             console.error(e);
-            alert("Erro ao atualizar perfil: " + (e.message || "Erro desconhecido"));
+            if (e.message && e.message.includes("New password should be different from the old password")) {
+                alert("A nova senha deve ser diferente da senha atual.");
+            } else {
+                alert("Erro ao atualizar perfil: " + (e.message || "Erro desconhecido"));
+            }
         }
     };
 

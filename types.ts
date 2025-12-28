@@ -49,6 +49,7 @@ export interface User {
   avatar?: string;
   allowedClusters?: string[];
   allowedBranches?: string[];
+  teamMemberId?: string; // Links to details in TeamMembers table
 }
 
 export enum TeamMemberRole {

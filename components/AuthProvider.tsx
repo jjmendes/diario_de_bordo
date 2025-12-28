@@ -7,6 +7,7 @@ interface AuthContextType {
     loading: boolean;
     signIn: (email: string, pass: string) => Promise<void>;
     signOut: () => Promise<void>;
+    refreshUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({} as AuthContextType);
@@ -79,6 +80,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         }
     };
 
+    const refreshUser = async () => {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user) {
+            await fetchProfile(session.user.id, session.user.email);
+        }
+    };
+
     const signIn = async (email: string, pass: string) => {
         const { error } = await supabase.auth.signInWithPassword({ email, password: pass });
         if (error) {
@@ -93,7 +101,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     };
 
     return (
-        <AuthContext.Provider value={{ user, loading, signIn, signOut }}>
+        <AuthContext.Provider value={{ user, loading, signIn, signOut, refreshUser }}>
             {!loading && children}
         </AuthContext.Provider>
     );

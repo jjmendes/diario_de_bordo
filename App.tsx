@@ -16,7 +16,7 @@ import { Shield } from 'lucide-react';
 import { AuthProvider, useAuth } from './components/AuthProvider';
 
 const AppContent = () => {
-  const { user: currentUser, loading: authLoading, signOut } = useAuth();
+  const { user: currentUser, loading: authLoading, signOut, refreshUser } = useAuth();
   const [occurrences, setOccurrences] = useState<Occurrence[]>([]);
   const [users, setUsers] = useState<User[]>([]); // New Users State
   const [loadingOccurrences, setLoadingOccurrences] = useState(false);
@@ -36,7 +36,8 @@ const AppContent = () => {
 
   const fetchOccurrences = async () => {
     setLoadingOccurrences(true);
-    const data = await SupabaseDB.getOccurrences();
+    // Fetch a large number for Dashboard stats (temporary until Dashboard is refactored)
+    const { data } = await SupabaseDB.getOccurrences({}, 0, 1000);
     setOccurrences(data);
     setLoadingOccurrences(false);
   };
@@ -219,7 +220,6 @@ const AppContent = () => {
 
           <Route path="/list" element={
             <OccurrenceList
-              occurrences={occurrences}
               users={users} // Pass users prop
               currentUser={currentUser}
               onUpdateStatus={handleUpdateStatus}
@@ -331,7 +331,7 @@ const AppContent = () => {
         isOpen={isProfileModalOpen}
         onClose={() => setIsProfileModalOpen(false)}
         user={currentUser}
-        onUpdateUser={(u) => { /* Update local user state if needed or refetch profile */ }}
+        onUpdateUser={async () => { await refreshUser(); }}
       />
     </Router>
   );
