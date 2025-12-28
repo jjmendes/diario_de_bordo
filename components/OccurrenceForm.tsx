@@ -191,7 +191,7 @@ export const OccurrenceForm: React.FC<OccurrenceFormProps> = ({ currentUser, onS
           <div className="space-y-6">
 
             {/* Block 1: Sector & Technician */}
-            <div className="space-y-4 p-4 bg-slate-50 rounded-lg border border-slate-100">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-slate-50 rounded-lg border border-slate-100">
               <div>
                 <CustomSelect
                   label="Setor (BKT)"
