@@ -524,16 +524,18 @@ export const AdminTeamManagement: React.FC<AdminTeamManagementProps> = ({
                                 <CustomSelect
                                     value={gestorClusterFilter}
                                     onChange={(val) => { setGestorClusterFilter(val); setGestorBranchFilter(''); }}
-                                    options={[{ label: 'Todos Clusters', value: '' }, ...uniqueClusters.map(c => ({ label: c, value: c }))]}
+                                    options={[{ label: 'Cluster', value: '' }, ...uniqueClusters.map(c => ({ label: c, value: c }))]}
                                     placeholder="Cluster"
+                                    className="h-9"
                                 />
                             </div>
                             <div className="w-1/2">
                                 <CustomSelect
                                     value={gestorBranchFilter}
                                     onChange={setGestorBranchFilter}
-                                    options={[{ label: 'Todas Filiais', value: '' }, ...uniqueBranchesForFilter.map(b => ({ label: b, value: b }))]}
+                                    options={[{ label: 'Filial', value: '' }, ...uniqueBranchesForFilter.map(b => ({ label: b, value: b }))]}
                                     placeholder="Filial"
+                                    className="h-9"
                                 />
                             </div>
                         </div>
@@ -545,32 +547,37 @@ export const AdminTeamManagement: React.FC<AdminTeamManagementProps> = ({
                             <CustomSelect
                                 value={teamGerenteFilter}
                                 onChange={setTeamGerenteFilter}
-                                options={[{ label: 'Gerente (Todos)', value: '' }, ...managers.map(m => ({ label: m.name.split(' ')[0], value: m.id }))]}
+                                options={[{ label: 'Gerente', value: '' }, ...managers.map(m => ({ label: m.name.split(' ')[0], value: m.id }))]}
                                 placeholder="Gerente"
+                                className="h-9"
                             />
                             <CustomSelect
                                 value={teamCoordenadorFilter}
                                 onChange={setTeamCoordenadorFilter}
-                                options={[{ label: 'Coord. (Todos)', value: '' }, ...coordinators.map(c => ({ label: c.name.split(' ')[0], value: c.id }))]}
+                                options={[{ label: 'Coord.', value: '' }, ...coordinators.map(c => ({ label: c.name.split(' ')[0], value: c.id }))]}
                                 placeholder="Coord."
+                                className="h-9"
                             />
                             <CustomSelect
                                 value={teamSupervisorFilter}
                                 onChange={setTeamSupervisorFilter}
-                                options={[{ label: 'Sup. (Todos)', value: '' }, ...supervisors.map(s => ({ label: s.name.split(' ')[0], value: s.id }))]}
+                                options={[{ label: 'Sup.', value: '' }, ...supervisors.map(s => ({ label: s.name.split(' ')[0], value: s.id }))]}
                                 placeholder="Supervisor"
+                                className="h-9"
                             />
                             <CustomSelect
                                 value={teamClusterFilter}
                                 onChange={(val) => { setTeamClusterFilter(val); setTeamBranchFilter(''); }}
                                 options={[{ label: 'Cluster', value: '' }, ...uniqueClusters.map(c => ({ label: c, value: c }))]}
                                 placeholder="Cluster"
+                                className="h-9"
                             />
                             <CustomSelect
                                 value={teamBranchFilter}
                                 onChange={setTeamBranchFilter}
                                 options={[{ label: 'Filial', value: '' }, ...Array.from(new Set(data.filter(m => !teamClusterFilter || m.cluster === teamClusterFilter).map(m => m.filial).filter(Boolean))).sort().map(b => ({ label: b, value: b }))]}
                                 placeholder="Filial"
+                                className="h-9"
                             />
                         </div>
                     )}
@@ -578,8 +585,8 @@ export const AdminTeamManagement: React.FC<AdminTeamManagementProps> = ({
                         <div className="relative">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
                             <input
-                                className="pl-9 pr-4 py-1.5 border rounded-md text-sm w-full md:w-64 focus:ring-1 focus:ring-[#940910] outline-none"
-                                placeholder={mode === 'TEAM' ? "Buscar por nome..." : "Buscar gestor..."}
+                                className="pl-9 pr-4 py-1.5 border rounded-md text-sm w-full md:w-32 focus:ring-1 focus:ring-[#940910] outline-none h-9"
+                                placeholder={mode === 'TEAM' ? "Nome..." : "Gestor..."}
                                 value={searchTeamTerm}
                                 onChange={e => setSearchTeamTerm(e.target.value)}
                             />

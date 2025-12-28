@@ -383,7 +383,7 @@ export const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
                                 placeholder="Buscar usuários..."
                                 value={searchTerm}
                                 onChange={e => setSearchTerm(e.target.value)}
-                                className="pl-9 pr-4 py-1.5 border rounded-md text-sm w-full md:w-64 focus:ring-1 focus:ring-[#940910] outline-none"
+                                className="pl-9 pr-4 py-1.5 border rounded-md text-sm w-full md:w-32 focus:ring-1 focus:ring-[#940910] outline-none h-9"
                             />
                         </div>
 
