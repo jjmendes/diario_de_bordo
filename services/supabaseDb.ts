@@ -724,6 +724,112 @@ export const SupabaseDB = {
         return { total: newCount + updatedCount, updated: updatedCount, new: newCount, errors };
     },
 
+    async importUsersFromCsv(csvContent: string, mode: 'MERGE' | 'REPLACE' = 'MERGE'): Promise<{ total: number, new: number, errors: string[] }> {
+        const cleanCsvString = (str: string | undefined): string => {
+            if (!str) return '';
+            return str.replace(/^["']|["']$/g, '').replace(/"/g, '').trim();
+        };
+
+        const cleanContent = csvContent.replace(/^\uFEFF/, '').trim();
+        const lines = cleanContent.split(/\r?\n/).filter(line => line.trim() !== '');
+        const errors: string[] = [];
+
+        if (lines.length === 0) return { total: 0, new: 0, errors: ['Arquivo vazio'] };
+
+        // Note: 'REPLACE' for Users is extremely dangerous (deletes all logins). 
+        // We will IGNORE 'REPLACE' mode for Users and always 'MERGE' (Append/Update) for safety, 
+        // or just warn in UI. Here we behave as MERGE.
+
+        const sampleSize = Math.min(lines.length, 5);
+        let semicolonCount = 0;
+        let commaCount = 0;
+        for (let i = 0; i < sampleSize; i++) {
+            semicolonCount += (lines[i].match(/;/g) || []).length;
+            commaCount += (lines[i].match(/,/g) || []).length;
+        }
+        const separator = semicolonCount >= commaCount ? ';' : ',';
+
+        let newCount = 0;
+        const currentUsers = await SupabaseDB.getUsers();
+
+        // Sequential processing required for Auth calls
+        for (let i = 0; i < lines.length; i++) {
+            if (i === 0) continue; // Skip header
+            const line = lines[i];
+            const parts = line.split(separator).map(cleanCsvString);
+
+            // Header Expected: Nome; Código Vínculo; Senha; Email; Apelido; Perfil; Clusters; Filiais
+            // Previous Template: Nome; ID Login; Senha; Email; Apelido; Perfil; Clusters; Filiais
+            if (parts.length >= 4) {
+                const name = parts[0];
+                const teamMemberId = parts[1]; // "ID Login" / Code
+                const password = parts[2];
+                const email = parts[3];
+                const nickname = parts[4] || name.split(' ')[0];
+                const role = parts[5] || 'CONTROLADOR';
+                const clusters = parts[6] ? parts[6].split('|') : [];
+                const branches = parts[7] ? parts[7].split('|') : [];
+
+                // Validations
+                if (!email || !password || !name) {
+                    errors.push(`Linha ${i + 1}: Email, Senha e Nome são obrigatórios.`);
+                    continue;
+                }
+
+                // Check if user exists (by email) to skip or update?
+                // UPDATE user password/data if exists? 
+                // `createUser` usually fails if email exists. 
+                // We will rely on `createUser` logic. If it fails, we assume it exists. 
+                // Updating via CSV is harder because we need the UUID.
+                // We'll try to find by email in `currentUsers`.
+                const existingUser = currentUsers.find(u => u.email?.toLowerCase() === email.toLowerCase());
+
+                if (existingUser) {
+                    // Update profile
+                    try {
+                        const { error } = await supabase.rpc('admin_upsert_profile_v2', {
+                            target_id: existingUser.id,
+                            new_email: email,
+                            new_name: name,
+                            new_nickname: nickname,
+                            new_role: role,
+                            new_clusters: clusters,
+                            new_branches: branches,
+                            new_team_member_id: teamMemberId
+                        });
+                        // Note: Password update not supported via simple RPC, requires Admin Auth API.
+                        if (error) throw error;
+                        // updatedCount++; // We are tracking 'new' mostly.
+                    } catch (e: any) {
+                        errors.push(`Linha ${i + 1} (Atualização): ${e.message}`);
+                    }
+                } else {
+                    // Create New
+                    const result = await SupabaseDB.createUser({
+                        email,
+                        password,
+                        name,
+                        nickname,
+                        role,
+                        allowedClusters: clusters,
+                        allowedBranches: branches,
+                        teamMemberId
+                    });
+
+                    if (result.success) {
+                        newCount++;
+                    } else {
+                        errors.push(`Linha ${i + 1} (Erro ao Criar): ${result.error}`);
+                    }
+                }
+            } else {
+                errors.push(`Linha ${i + 1}: Colunas insuficientes`);
+            }
+        }
+
+        return { total: newCount, new: newCount, errors };
+    },
+
     async importOccurrencesFromCsv(csvContent: string, mode: 'MERGE' | 'REPLACE' = 'MERGE'): Promise<{ total: number, new: number, errors: string[] }> {
         // Fetch geo for mapping
         const geoHierarchy = await SupabaseDB.getGeoHierarchy();

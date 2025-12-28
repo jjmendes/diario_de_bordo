@@ -47,8 +47,8 @@ export const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
 
     // Helper: Download Template
     const handleDownloadUserTemplate = () => {
-        const csvHeader = "Nome;ID Login;Senha;Email;Apelido;Perfil (ADMIN ou CONTROLADOR);Clusters (Separados por |);Filiais (Separadas por |)\n";
-        const csvRows = "Carlos Silva;op_carlos;123;carlos@empresa.com;Carlão;CONTROLADOR;SALVADOR|RECIFE;BKT_SALVADOR_CENTRO\nAdmin Geral;admin;123456;admin@empresa.com;Adm;ADMIN;SALVADOR|FORTALEZA|RECIFE;";
+        const csvHeader = "Nome;Código Vínculo (Copiar para Técnico);Senha;Email;Apelido;Perfil (ADMIN ou CONTROLADOR);Clusters (Separados por |);Filiais (Separadas por |)\n";
+        const csvRows = "Carlos Silva;4055;123;carlos@empresa.com;Carlão;CONTROLADOR;SALVADOR|RECIFE;BKT_SALVADOR_CENTRO\nAdmin Geral;admin;123456;admin@empresa.com;Adm;ADMIN;SALVADOR|FORTALEZA|RECIFE;";
         const csvContent = `\uFEFF${csvHeader}${csvRows}`;
         const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
         const url = URL.createObjectURL(blob);
@@ -63,9 +63,9 @@ export const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
 
     // Helper: Export Users
     const handleExportUsers = () => {
-        const header = "Nome;ID Login;Email;Apelido;Perfil;Senha;Clusters Acesso;Filiais Acesso\n";
+        const header = "Nome;Código Vínculo;Email;Apelido;Perfil;Senha;Clusters Acesso;Filiais Acesso\n";
         const rows = users.map(u =>
-            `${u.name};${u.id};${u.email || ''};${u.nickname || ''};${u.role};${u.password || ''};${(u.allowedClusters || []).join('|')};${(u.allowedBranches || []).join('|')}`
+            `${u.name};${u.teamMemberId || ''};${u.email || ''};${u.nickname || ''};${u.role};${u.password || ''};${(u.allowedClusters || []).join('|')};${(u.allowedBranches || []).join('|')}`
         ).join("\n");
 
         const blob = new Blob([`\uFEFF${header + rows}`], { type: 'text/csv;charset=utf-8;' });

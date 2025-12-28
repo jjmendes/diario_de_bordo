@@ -74,9 +74,7 @@ export const AdminPanel: React.FC = () => {
       } else if (importType === 'GESTORES') {
         result = await SupabaseDB.importGestoresFromCsv(pendingFileText, mode);
       } else {
-        alert("Importação de Usuários via CSV não suportada totalmente no Supabase ainda.");
-        setLoadingTeam(false);
-        return;
+        result = await SupabaseDB.importUsersFromCsv(pendingFileText, mode);
       }
 
       if (result) {
