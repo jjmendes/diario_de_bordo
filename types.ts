@@ -32,7 +32,7 @@ export enum OccurrenceCategory {
   CAT_08 = '8 - Técnico Sem Atividade',
   CAT_09 = '9 - Produção Zero 15:00',
   CAT_10 = '10 - BA Longa >= 3h',
-  CAT_11 = '11 - Técnico Não Iniciou a Primeira da Tarde 14:00',
+  CAT_11 = '11 - Técnico não Iniciou a Primeira da Tarde 14:30',
   CAT_12 = '12 - Técnico Sem Execução',
   CAT_13 = '13 - Problema Sistêmico Geral',
   CAT_14 = '14 - Setor com Chuva (Produção Impactada)',
