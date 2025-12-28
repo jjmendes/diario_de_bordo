@@ -87,6 +87,8 @@ export const AdminTeamManagement: React.FC<AdminTeamManagementProps> = ({
     const coordinators = teamMembers.filter(m => m.role === TeamMemberRole.COORDENADOR).sort((a, b) => a.name.localeCompare(b.name));
     const managers = teamMembers.filter(m => m.role === TeamMemberRole.GERENTE).sort((a, b) => a.name.localeCompare(b.name));
 
+    const [showInactive, setShowInactive] = useState(false);
+
     const data = teamMembers.filter(m => mode === 'TEAM' ? m.role === TeamMemberRole.TECNICO : m.role !== TeamMemberRole.TECNICO);
 
     const filteredData = data.filter(m => {
@@ -94,7 +96,12 @@ export const AdminTeamManagement: React.FC<AdminTeamManagementProps> = ({
             m.id.toLowerCase().includes(searchTeamTerm.toLowerCase()) ||
             (m.filial && m.filial.toLowerCase().includes(searchTeamTerm.toLowerCase())) ||
             (m.supervisorId && m.supervisorId.toLowerCase().includes(searchTeamTerm.toLowerCase()));
+
         const hasError = !m.supervisorId || !isSupervisorValid(m.supervisorId);
+
+        // Filter Inactive Logic
+        if (!showInactive && !m.active) return false;
+
         if (showTeamErrorsOnly && mode === 'TEAM') return matchesSearch && hasError;
         return matchesSearch;
     });
@@ -477,6 +484,16 @@ export const AdminTeamManagement: React.FC<AdminTeamManagementProps> = ({
                                 </div>
                             )}
                         </div>
+
+                        {mode === 'TEAM' && (
+                            <button
+                                onClick={() => setShowInactive(!showInactive)}
+                                className={`ml-2 px-3 py-1.5 rounded-md text-xs font-medium border transition-colors whitespace-nowrap ${showInactive ? 'bg-slate-100 text-slate-700 border-slate-300' : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50'}`}
+                            >
+                                {showInactive ? 'Ocultar Inativos' : 'Ver Inativos'}
+                            </button>
+                        )}
+
                         {(mode === 'GESTORES' || mode === 'TEAM') && (
                             <div className="flex items-center gap-1 pl-2 border-l border-slate-200">
                                 <button onClick={mode === 'TEAM' ? handleExportTeam : handleExportGestores} className="p-2 rounded hover:bg-slate-100 text-slate-500 transition-colors" title="Exportar Base Completa"><Download size={18} /></button>
@@ -584,7 +601,7 @@ export const AdminTeamManagement: React.FC<AdminTeamManagementProps> = ({
                                     )}
                                     <td className="px-3 py-2">
                                         <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${member.active ? 'bg-emerald-50 text-emerald-600 border-emerald-200' : 'bg-red-50 text-red-600 border-red-200'} `}>
-                                            {member.active ? 'CONCLUÍDA' : 'INATIVO'}
+                                            {member.active ? 'ATIVO' : 'INATIVO'}
                                         </span>
                                     </td>
                                     <td className="px-3 py-2 text-right">

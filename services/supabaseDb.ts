@@ -530,7 +530,7 @@ export const SupabaseDB = {
             const { error } = await supabase
                 .from('team_members')
                 .update({ active: false })
-                .eq('role', 'TECNICO');
+                .eq('role', 'Técnico');
 
             if (error) {
                 console.error("Error deactivating technicians for replacement:", error);
