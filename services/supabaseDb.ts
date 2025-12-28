@@ -662,6 +662,20 @@ export const SupabaseDB = {
             if (m.id.startsWith('G')) maxG = Math.max(maxG, num);
         });
 
+        // SOFT REPLACE LOGIC FOR MANAGERS: Deactivate existing managers before import
+        if (mode === 'REPLACE') {
+            const { error } = await supabase
+                .from('team_members')
+                .update({ active: false })
+                .neq('role', 'Técnico'); // Deactivate Supervisors, Coordinators, Managers
+
+            if (error) {
+                console.error("Error deactivating managers for replacement:", error);
+                errors.push("Falha ao desativar base antiga: " + error.message);
+                return { total: 0, updated: 0, new: 0, errors };
+            }
+        }
+
         lines.forEach((line, index) => {
             if (index === 0) return;
             const parts = line.split(separator).map(cleanCsvString);

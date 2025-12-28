@@ -486,14 +486,12 @@ export const AdminTeamManagement: React.FC<AdminTeamManagementProps> = ({
                             )}
                         </div>
 
-                        {mode === 'TEAM' && (
-                            <button
-                                onClick={() => setShowInactive(!showInactive)}
-                                className={`ml-2 px-3 py-1.5 rounded-md text-xs font-medium border transition-colors whitespace-nowrap ${showInactive ? 'bg-slate-100 text-slate-700 border-slate-300' : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50'}`}
-                            >
-                                {showInactive ? 'Ocultar Inativos' : 'Ver Inativos'}
-                            </button>
-                        )}
+                        <button
+                            onClick={() => setShowInactive(!showInactive)}
+                            className={`ml-2 px-3 py-1.5 rounded-md text-xs font-medium border transition-colors whitespace-nowrap ${showInactive ? 'bg-slate-100 text-slate-700 border-slate-300' : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50'}`}
+                        >
+                            {showInactive ? 'Ocultar Inativos' : 'Ver Inativos'}
+                        </button>
 
                         {(mode === 'GESTORES' || mode === 'TEAM') && (
                             <div className="flex items-center gap-1 pl-2 border-l border-slate-200">
