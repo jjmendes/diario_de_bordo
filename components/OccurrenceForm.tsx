@@ -194,6 +194,16 @@ export const OccurrenceForm: React.FC<OccurrenceFormProps> = ({ currentUser, onS
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-slate-50 rounded-lg border border-slate-100">
               <div>
                 <CustomSelect
+                  label="Técnico (Sua Equipe)"
+                  value={singleTechId}
+                  onChange={setSingleTechId}
+                  options={teamMembers.map(t => ({ label: t.name, value: t.id }))}
+                  placeholder="Selecione o Técnico..."
+                  required
+                />
+              </div>
+              <div>
+                <CustomSelect
                   label="Setor (BKT)"
                   value={singleSector}
                   onChange={setSingleSector}
@@ -201,16 +211,6 @@ export const OccurrenceForm: React.FC<OccurrenceFormProps> = ({ currentUser, onS
                   placeholder="Selecione o Setor..."
                   required
                   helperText="Exibindo setores das filiais vinculadas ao seu perfil."
-                />
-              </div>
-              <div>
-                <CustomSelect
-                  label="Técnico (Sua Equipe)"
-                  value={singleTechId}
-                  onChange={setSingleTechId}
-                  options={teamMembers.map(t => ({ label: t.name, value: t.id }))}
-                  placeholder="Selecione o Técnico..."
-                  required
                 />
               </div>
             </div>
