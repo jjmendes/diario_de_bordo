@@ -23,11 +23,16 @@ export const Dashboard: React.FC<DashboardProps> = () => {
   const day = String(today.getDate()).padStart(2, '0');
   const todayString = `${year}-${month}-${day}`;
 
+  // Calculate First and Last day of Current Month
+  const firstDayString = `${year}-${month}-01`;
+  const lastDayOfCurrentMonth = new Date(year, today.getMonth() + 1, 0).getDate();
+  const lastDayString = `${year}-${month}-${String(lastDayOfCurrentMonth).padStart(2, '0')}`;
+
   const currentYear = year.toString();
   const currentMonth = (today.getMonth() + 1).toString();
 
-  const [dateStart, setDateStart] = useState(todayString);
-  const [dateEnd, setDateEnd] = useState(todayString);
+  const [dateStart, setDateStart] = useState(firstDayString);
+  const [dateEnd, setDateEnd] = useState(lastDayString);
   const [selectedCluster, setSelectedCluster] = useState('');
   const [selectedBranch, setSelectedBranch] = useState('');
   const [selectedSector, setSelectedSector] = useState('');
