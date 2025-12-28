@@ -232,12 +232,12 @@ export const AdminTeamManagement: React.FC<AdminTeamManagementProps> = ({
     };
 
     const handleExportGestores = () => {
-        const header = "Nome;Cargo;Superior Imediato;Cluster;Filial;Status\n";
+        const header = "ID;Nome;Cargo;Superior Imediato;Cluster;Filial;Status\n";
         const rows = teamMembers
             .filter(m => m.role !== TeamMemberRole.TECNICO)
             .map(m => {
                 const superiorName = m.reportsToId ? teamMembers.find(tm => tm.id === m.reportsToId)?.name || '' : '';
-                return `${m.name};${m.role};${superiorName};${m.cluster || ''};${m.filial || ''};${m.active ? 'Ativo' : 'Inativo'}`;
+                return `${m.id};${m.name};${m.role};${superiorName};${m.cluster || ''};${m.filial || ''};${m.active ? 'Ativo' : 'Inativo'}`;
             }).join("\n");
         downloadCSV(`base_gestores_${new Date().toISOString().split('T')[0]}.csv`, header + rows);
     };
@@ -248,8 +248,8 @@ export const AdminTeamManagement: React.FC<AdminTeamManagementProps> = ({
             const example = "T001;João Silva;Fernando Lima;Roberto Santos;Carlos Silva;C001;SALVADOR;SALVADOR;BA";
             downloadCSV("modelo_importacao_tecnicos.csv", header + example);
         } else {
-            const header = "Nome;Cargo;Superior Imediato;Cluster;Filial\n";
-            const example = "Fernando Lima;Supervisor;Roberto Santos;SALVADOR;SALVADOR";
+            const header = "ID;Nome;Cargo;Superior Imediato;Cluster;Filial\n";
+            const example = "S001;Fernando Lima;Supervisor;Roberto Santos;SALVADOR;SALVADOR";
             downloadCSV("modelo_importacao_gestores.csv", header + example);
         }
     };

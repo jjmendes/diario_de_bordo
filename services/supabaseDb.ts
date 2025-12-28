@@ -660,19 +660,20 @@ export const SupabaseDB = {
             if (index === 0) return;
             const parts = line.split(separator).map(cleanCsvString);
 
-            if (parts.length >= 2) {
-                const name = parts[0];
-                const roleStr = parts[1] || '';
-                const superiorName = parts[2] || '';
-                const cluster = parts[3] || '';
-                const filial = parts[4] || '';
+            // New Format: ID;Nome;Cargo;Superior Imediato;Cluster;Filial
+            if (parts.length >= 3) {
+                const idInput = parts[0];
+                const name = parts[1];
+                const roleStr = parts[2] || '';
+                const superiorName = parts[3] || '';
+                const cluster = parts[4] || '';
+                const filial = parts[5] || '';
 
                 let role: TeamMemberRole = TeamMemberRole.SUPERVISOR;
-                if (roleStr === 'Coordenador') role = TeamMemberRole.COORDENADOR;
-                if (roleStr === 'Gerente') role = TeamMemberRole.GERENTE;
+                if (roleStr.toUpperCase() === 'COORDENADOR') role = TeamMemberRole.COORDENADOR;
+                if (roleStr.toUpperCase() === 'GERENTE') role = TeamMemberRole.GERENTE;
 
-                // Find superior (in current DB team OR in already processed upsertList?? this is tricky)
-                // Ideally supervisors should be imported AFTER their managers.
+                // Find superior (in current DB team OR in already processed upsertList)
                 // We search in currentTeam first.
                 let superior = superiorName ? currentTeam.find(m => m.name.toLowerCase() === superiorName.toLowerCase()) : undefined;
 
@@ -682,16 +683,19 @@ export const SupabaseDB = {
                     if (foundInBatch) superior = { id: foundInBatch.id } as any;
                 }
 
-                // Generate ID
-                let id = '';
-                if (role === TeamMemberRole.SUPERVISOR) { maxS++; id = `S${String(maxS).padStart(3, '0')}`; }
-                else if (role === TeamMemberRole.COORDENADOR) { maxCO++; id = `CO${String(maxCO).padStart(3, '0')}`; }
-                else { maxG++; id = `G${String(maxG).padStart(3, '0')}`; }
+                // Use provided ID or Generate ID if missing
+                let id = idInput;
+                if (!id) {
+                    if (role === TeamMemberRole.SUPERVISOR) { maxS++; id = `S${String(maxS).padStart(3, '0')}`; }
+                    else if (role === TeamMemberRole.COORDENADOR) { maxCO++; id = `CO${String(maxCO).padStart(3, '0')}`; }
+                    else { maxG++; id = `G${String(maxG).padStart(3, '0')}`; }
+                }
 
-                if (name) {
-                    // Check if update by name? Or just always insert new if generation?
-                    // MockDB generated new. We'll generate new.
-                    newCount++;
+                if (name && id) {
+                    // Check if exists to count 'update' vs 'new'
+                    const exists = currentTeam.some(m => m.id === id);
+                    if (exists) updatedCount++; else newCount++;
+
                     upsertList.push({
                         id,
                         name,
@@ -702,7 +706,7 @@ export const SupabaseDB = {
                         active: true
                     });
                 } else {
-                    errors.push(`Linha ${index + 1}: Nome obrigatório ausente`);
+                    errors.push(`Linha ${index + 1}: Dados obrigatórios ausentes (ID ou Nome)`);
                 }
             } else {
                 errors.push(`Linha ${index + 1}: Colunas insuficientes`);
