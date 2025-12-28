@@ -42,7 +42,8 @@ export const OccurrenceList: React.FC<OccurrenceListProps> = ({ users = [], curr
     escalation: '',
     status: '',
     branch: '',
-    cluster: ''
+    cluster: '',
+    registeredBy: ''
   });
 
   const [debouncedSearch, setDebouncedSearch] = useState(''); // Global text search
@@ -105,7 +106,9 @@ export const OccurrenceList: React.FC<OccurrenceListProps> = ({ users = [], curr
       cluster: filters.cluster,
       branch: filters.branch,
       search: debouncedSearch,
-      technicianId: filters.technician // Added support for technician filter
+
+      technicianId: filters.technician, // Added support for technician filter
+      registeredBy: filters.registeredBy
     };
 
     // Pass currentUser to enable backend hierarchy filtering
@@ -147,7 +150,7 @@ export const OccurrenceList: React.FC<OccurrenceListProps> = ({ users = [], curr
     const day = String(today.getDate()).padStart(2, '0');
     const todayString = `${year}-${month}-${day}`;
 
-    setFilters({ startDate: todayString, endDate: todayString, technician: '', category: '', reason: '', escalation: '', status: '', branch: '', cluster: '' });
+    setFilters({ startDate: todayString, endDate: todayString, technician: '', category: '', reason: '', escalation: '', status: '', branch: '', cluster: '', registeredBy: '' });
     setDebouncedSearch('');
   };
 
@@ -460,6 +463,13 @@ export const OccurrenceList: React.FC<OccurrenceListProps> = ({ users = [], curr
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2">
             {/* Removed Search and Date from here */}
+            {/* User Filter (Creator) */}
+            <CustomSelect
+              value={filters.registeredBy}
+              onChange={(val) => updateFilter('registeredBy', val)}
+              options={[{ label: 'Usuário (Criador)', value: '' }, ...users.map(u => ({ label: u.name, value: u.id })).sort((a, b) => a.label.localeCompare(b.label))]}
+              placeholder="Usuário"
+            />
             <CustomSelect
               value={filters.cluster}
               onChange={(val) => updateFilter('cluster', val)}

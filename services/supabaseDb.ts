@@ -176,6 +176,7 @@ export const SupabaseDB = {
             branch?: string;
             search?: string;
             technicianId?: string; // Explicit technician filter
+            registeredBy?: string; // Filter by creator
         },
         page: number = 0,
         pageSize: number = 50,
@@ -227,6 +228,7 @@ export const SupabaseDB = {
         // Apply filters
         if (filters?.startDate) query = query.gte('date', filters.startDate);
         if (filters?.endDate) query = query.lte('date', filters.endDate);
+        if (filters?.registeredBy && filters.registeredBy !== 'ALL') query = query.eq('registered_by', filters.registeredBy);
         if (filters?.status && filters.status !== 'ALL') query = query.eq('status', filters.status);
         if (filters?.cluster && filters.cluster !== 'ALL') query = query.eq('cluster', filters.cluster);
         if (filters?.branch && filters.branch !== 'ALL') query = query.eq('branch', filters.branch);
