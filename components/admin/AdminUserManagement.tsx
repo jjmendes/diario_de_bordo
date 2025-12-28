@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { User, UserRole, TeamMember } from '../../types';
 import { SupabaseDB } from '../../services/supabaseDb';
 import { Card, Button } from '../UiComponents';
-import { Upload, Trash2, UserPlus, FileDown, Pencil, MapPin } from 'lucide-react';
+import { Upload, Trash2, UserPlus, FileDown, Pencil, MapPin, Search, Download } from 'lucide-react';
 
 interface AdminUserManagementProps {
     users: User[];
@@ -39,6 +39,7 @@ export const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
 
     const [isLinking, setIsLinking] = useState(false); // UI toggle for linking mode
 
+    const [searchTerm, setSearchTerm] = useState('');
     const [isAddingUser, setIsAddingUser] = useState(false);
     const [editingUserOriginalId, setEditingUserOriginalId] = useState<string | null>(null);
     const [internalLoading, setInternalLoading] = useState(false);
@@ -241,22 +242,29 @@ export const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
 
     const isLoading = loading || internalLoading;
 
+    // Filter Logic
+    const filteredUsers = users.filter(u =>
+        u.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        u.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (u.email && u.email.toLowerCase().includes(searchTerm.toLowerCase()))
+    );
+
     return (
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-300">
-            <div className="flex justify-end gap-2">
-                <Button onClick={handleExportUsers} variant="outline" className="text-[#940910] border-[#940910]/20"><FileDown size={18} /> Exportar Lista</Button>
-                <Button variant="ghost" onClick={handleDownloadUserTemplate} className="text-slate-600 border-slate-200 border"><FileDown size={18} /> Modelo CSV (Vazio)</Button>
-                <Button variant="outline" onClick={() => userFileInputRef.current?.click()} className="text-[#940910] border-[#940910]/20"><Upload size={18} /> Importar CSV</Button>
-                <input type="file" ref={userFileInputRef} className="hidden" accept=".csv,.txt" onChange={handleFileSelect} />
-                <Button onClick={() => {
-                    if (isAddingUser) handleResetForm();
-                    else {
-                        handleResetForm();
-                        setIsAddingUser(true);
-                    }
-                }} className="bg-[#940910] hover:bg-[#7a060c]">
-                    {isAddingUser ? 'Cancelar' : 'Novo Operador/Admin'} <UserPlus size={18} />
-                </Button>
+            {/* Header / Actions Area */}
+            <div className="space-y-4">
+                {/* Buttons Row */}
+                <div className="flex flex-wrap items-center gap-3">
+                    <div className="flex flex-wrap gap-2 justify-end w-full">
+                        <Button variant="outline" onClick={() => {
+                            handleResetForm();
+                            setIsAddingUser(true);
+                            setTimeout(() => window.scrollTo({ top: 300, behavior: 'smooth' }), 100);
+                        }} className="text-slate-600 border-slate-200 hover:bg-slate-50 text-sm h-9">
+                            <UserPlus size={16} className="mr-2" /> Novo Operador/Admin
+                        </Button>
+                    </div>
+                </div>
             </div>
 
             {isAddingUser && (
@@ -274,8 +282,6 @@ export const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
                                         <input className="w-full border rounded p-2 text-xs bg-slate-100 text-slate-500" value={newUserProps.id} disabled />
                                     </div>
                                 )}
-
-
                             </div>
                             <div>
                                 <label className="block text-xs font-medium mb-1 text-[#404040]">Senha de Acesso</label>
@@ -357,51 +363,121 @@ export const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
                 </Card>
             )}
 
-            {/* User Table */}
-            <Card title="Usuários Cadastrados no Sistema">
+            <Card className="overflow-hidden border-slate-200 shadow-sm">
+                <div className="p-4 border-b border-slate-100 bg-slate-50/50 flex flex-col sm:flex-row justify-between items-center gap-4">
+                    <h3 className="font-bold text-slate-700 flex items-center gap-2">
+                        Usuários Cadastrados no Sistema <span className="text-xs font-normal text-slate-500 bg-slate-200 px-2 py-0.5 rounded-full">{filteredUsers.length}</span>
+                    </h3>
+
+                    <div className="flex items-center gap-2 w-full sm:w-auto">
+                        <div className="relative flex-1 sm:w-64">
+                            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                            <input
+                                type="text"
+                                placeholder="Buscar usuários..."
+                                value={searchTerm}
+                                onChange={e => setSearchTerm(e.target.value)}
+                                className="w-full pl-9 pr-4 py-1.5 text-sm border border-slate-200 rounded-md focus:outline-none focus:ring-2 focus:ring-[#940910]/20 focus:border-[#940910]"
+                            />
+                        </div>
+
+                        <div className="h-6 w-px bg-slate-300 mx-1"></div>
+
+                        {/* Action Icons */}
+                        <Button variant="ghost" size="icon" onClick={handleDownloadUserTemplate} title="Baixar Modelo CSV">
+                            <FileDown size={18} className="text-slate-500 hover:text-slate-700" />
+                        </Button>
+                        <Button variant="ghost" size="icon" onClick={() => userFileInputRef.current?.click()} title="Importar CSV">
+                            <Upload size={18} className="text-slate-500 hover:text-slate-700" />
+                        </Button>
+                        <input type="file" ref={userFileInputRef} className="hidden" accept=".csv,.txt" onChange={handleFileSelect} />
+
+                        <Button variant="ghost" size="icon" onClick={handleExportUsers} title="Exportar Lista">
+                            <Download size={18} className="text-slate-500 hover:text-slate-700" />
+                        </Button>
+                    </div>
+                </div>
+
                 <div className="overflow-x-auto">
                     <table className="w-full text-sm text-left">
-                        <thead className="bg-[#940910] text-white border-b">
+                        <thead className="bg-[#940910] text-white">
                             <tr>
-                                <th className="px-4 py-3 border-r border-white/20 text-center">Cód.</th>
-                                <th className="px-4 py-3 border-r border-white/20 text-center">Nome do Colaborador</th>
-                                <th className="px-4 py-3 border-r border-white/20 text-center">Perfil</th>
-                                <th className="px-4 py-3 border-r border-white/20 text-center w-[25%]">Clusters Acesso</th>
-                                <th className="px-4 py-3 border-r border-white/20 text-center w-[25%]">Filiais Específicas</th>
-                                <th className="px-4 py-3 text-center">Ações</th>
+                                <th className="p-3 font-semibold rounded-tl-lg">Cód.</th>
+                                <th className="p-3 font-semibold">Nome do Colaborador</th>
+                                <th className="p-3 font-semibold">Perfil</th>
+                                <th className="p-3 font-semibold">Clusters Acesso</th>
+                                <th className="p-3 font-semibold">Filiais Específicas</th>
+                                <th className="p-3 font-semibold text-center rounded-tr-lg">Ações</th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y text-slate-600">
-                            {[...users].sort((a, b) => a.name.localeCompare(b.name)).map(u => (
-                                <tr key={u.id} className="hover:bg-slate-50 align-middle">
-                                    <td className="px-4 py-3 text-center font-bold text-slate-700">
-                                        {u.teamMemberId || <span className="text-slate-300">-</span>}
-                                    </td>
-                                    <td className="px-4 py-3 font-medium text-[#404040]">
-                                        {u.name}
-                                    </td>
-                                    <td className="px-4 py-3"><span className={`px-2 py-1 rounded text-xs font-bold ${u.role === UserRole.ADMIN ? 'bg-[#940910]/10 text-[#940910]' : 'bg-[#F6B700]/10 text-[#b38600]'}`}>{u.role}</span></td>
-                                    <td className="px-4 py-3 text-xs text-slate-500 max-w-xs">
-                                        <div className="line-clamp-2" title={u.allowedClusters?.join(', ')}>
-                                            {u.allowedClusters?.length ? u.allowedClusters.join(', ') : 'Nenhum'}
-                                        </div>
-                                    </td>
-                                    <td className="px-4 py-3 text-xs text-slate-500 max-w-xs">
-                                        <div className="line-clamp-2" title={u.allowedBranches?.join(', ')}>
-                                            {u.allowedBranches && u.allowedBranches.length > 0 ? u.allowedBranches.join(', ') : <span className="italic text-slate-400">Todas do Cluster</span>}
-                                        </div>
-                                    </td>
-                                    <td className="px-4 py-3 text-center">
-                                        <div className="flex justify-center gap-2">
-                                            <button type="button" onClick={(e) => { e.stopPropagation(); handleEditUser(u); }} className="text-blue-500 hover:text-blue-700 hover:bg-blue-50 p-2 rounded relative z-20" title="Editar Acesso"><Pencil size={16} className="pointer-events-none" /></button>
-                                            <button type="button" onClick={(e) => handleDeleteUser(e, u.id)} className="text-red-500 hover:text-red-700 hover:bg-red-50 p-2 rounded relative z-20" disabled={u.id === 'admin'} title="Remover Acesso"><Trash2 size={16} className="pointer-events-none" /></button>
+                        <tbody className="divide-y divide-slate-100">
+                            {isLoading ? (
+                                <tr>
+                                    <td colSpan={6} className="p-8 text-center text-slate-500">
+                                        <div className="flex justify-center items-center gap-2">
+                                            <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-[#940910]"></div>
+                                            Carregando...
                                         </div>
                                     </td>
                                 </tr>
-                            ))}
+                            ) : filteredUsers.length === 0 ? (
+                                <tr>
+                                    <td colSpan={6} className="p-8 text-center text-slate-500">
+                                        Nenhum usuário encontrado.
+                                    </td>
+                                </tr>
+                            ) : (
+                                filteredUsers.map((user) => (
+                                    <tr key={user.id} className="hover:bg-slate-50 transition-colors group">
+                                        <td className="p-3 font-medium text-slate-700 text-center">{user.teamMemberId || '-'}</td>
+                                        <td className="p-3 text-slate-600">
+                                            <div className="flex flex-col">
+                                                <span className="font-medium">{user.name}</span>
+                                                {user.email && <span className="text-xs text-slate-400">{user.email}</span>}
+                                            </div>
+                                        </td>
+                                        <td className="p-3">
+                                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide border ${user.role === UserRole.ADMIN
+                                                ? 'bg-red-50 text-red-700 border-red-100'
+                                                : 'bg-amber-50 text-amber-700 border-amber-100'
+                                                }`}>
+                                                {user.role}
+                                            </span>
+                                        </td>
+                                        <td className="p-3 text-xs text-slate-500 max-w-[200px]">
+                                            {user.allowedClusters?.length
+                                                ? user.allowedClusters.join(', ')
+                                                : <span className="italic text-slate-400">Todos do Global</span>}
+                                        </td>
+                                        <td className="p-3 text-xs text-slate-500 max-w-[200px]">
+                                            {user.allowedBranches?.length
+                                                ? <span title={user.allowedBranches.join(', ')}>{user.allowedBranches.length} filiais selecionadas</span>
+                                                : <span className="italic text-slate-400">Todas do Cluster</span>}
+                                        </td>
+                                        <td className="p-3 text-center">
+                                            <div className="flex items-center justify-center gap-2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                                                <button
+                                                    onClick={() => handleEditUser(user)}
+                                                    className="p-1.5 text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                                                    title="Editar"
+                                                >
+                                                    <Pencil size={16} />
+                                                </button>
+                                                <button
+                                                    onClick={(e) => handleDeleteUser(e, user.id)}
+                                                    className="p-1.5 text-red-600 hover:bg-red-50 rounded transition-colors"
+                                                    title="Excluir"
+                                                    disabled={user.id === 'admin'}
+                                                >
+                                                    <Trash2 size={16} />
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))
+                            )}
                         </tbody>
                     </table>
-                    {users.length === 0 && !isLoading && <div className="p-4 text-center text-slate-500 italic">Nenhum usuário encontrado.</div>}
                 </div>
             </Card>
         </div>
