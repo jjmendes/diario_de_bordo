@@ -22,21 +22,21 @@ export enum EscalationLevel {
 
 // Using generic keys with descriptive values to handle the complex sentences provided
 export enum OccurrenceCategory {
-  CAT_01 = '1 - Técnico não Iniciou até 08:30',
-  CAT_02 = '2 - Prazo Perdido (Exec. 30 Min)',
-  CAT_03 = '3 - Técnico Saiu da Força',
-  CAT_04 = '4 - Técnico Entrou na Força',
-  CAT_05 = '5 - Mínima Agenda Perdida',
-  CAT_06 = '6 - Produção Zero 12:00',
-  CAT_07 = '7 - Técnico Ainda na 1ª Atividade do Dia 12h',
-  CAT_08 = '8 - Técnico Sem Atividade',
-  CAT_09 = '9 - Produção Zero 15:00',
-  CAT_10 = '10 - BA Longa >= 3h',
-  CAT_11 = '11 - Técnico não Iniciou a Primeira da Tarde 14:30',
-  CAT_12 = '12 - Técnico Sem Execução',
-  CAT_13 = '13 - Problema Sistêmico Geral',
-  CAT_14 = '14 - Setor com Chuva (Produção Impactada)',
-  CAT_15 = '15 - Pendência da Venda do Dia'
+  CAT_01 = '1-Técnico não Iniciou até 08:30',
+  CAT_02 = '2-Prazo Perdido (Exec. 30 Min)',
+  CAT_03 = '3-Técnico Saiu da Força',
+  CAT_04 = '4-Técnico Entrou na Força',
+  CAT_05 = '5-Mínima Agenda Perdida',
+  CAT_06 = '6-Produção Zero 12:00',
+  CAT_07 = '7-Técnico Ainda na 1ª Atividade do Dia 12h',
+  CAT_08 = '8-Técnico sem Atividade',
+  CAT_09 = '9-Produção Zero 15:00',
+  CAT_10 = '10-BA Longa >= 3h',
+  CAT_11 = '11-Técnico não Iniciou a Primeira da Tarde 14:30',
+  CAT_12 = '12-Técnico Sem Execução',
+  CAT_13 = '13-Problema Sistêmico Geral',
+  CAT_14 = '14-Setor com Chuva (Produção Impactada)',
+  CAT_15 = '15-Pendência da Venda do Dia'
 }
 
 export interface User {
