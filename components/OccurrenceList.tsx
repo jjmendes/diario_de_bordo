@@ -25,13 +25,18 @@ export const OccurrenceList: React.FC<OccurrenceListProps> = ({ users = [], curr
   const [hasMore, setHasMore] = useState(true);
 
   // --- Filter States ---
+  // --- Filter States ---
+  // FIX: Default filter to Today to match Dashboard and User Request
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = String(today.getMonth() + 1).padStart(2, '0');
+  const day = String(today.getDate()).padStart(2, '0');
+  const todayString = `${year}-${month}-${day}`;
+
   const [filters, setFilters] = useState({
-    startDate: '',
-    endDate: '',
-    technician: '', // Note: Backend currently only filters by text search or exact match if implemented. Using search for tech name for simplicity or mapping ID.
-    // Actually, getOccurrences filters supports: startDate, endDate, status, cluster, branch, search.
-    // For specific fields like 'technician' (user), 'category', 'reason', we might need to rely on 'search' or expand backend.
-    // Let's map available UI filters to backend params.
+    startDate: todayString,
+    endDate: todayString,
+    technician: '',
     category: '',
     reason: '',
     escalation: '',
@@ -135,7 +140,14 @@ export const OccurrenceList: React.FC<OccurrenceListProps> = ({ users = [], curr
   };
 
   const clearFilters = () => {
-    setFilters({ startDate: '', endDate: '', technician: '', category: '', reason: '', escalation: '', status: '', branch: '', cluster: '' });
+    // Reset to Today, not empty, as per default behavior
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const day = String(today.getDate()).padStart(2, '0');
+    const todayString = `${year}-${month}-${day}`;
+
+    setFilters({ startDate: todayString, endDate: todayString, technician: '', category: '', reason: '', escalation: '', status: '', branch: '', cluster: '' });
     setDebouncedSearch('');
   };
 
