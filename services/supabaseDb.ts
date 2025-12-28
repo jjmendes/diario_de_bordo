@@ -187,8 +187,17 @@ export const SupabaseDB = {
             .from('occurrences')
             .select(`
                 *,
-                team_members: technician_id(name)
+                team_members: technician_id(name),
+                creator_profile: registered_by (name, nickname)
             `, { count: 'exact' });
+
+        // ... filters ...
+
+        // (Skipping filters setup lines for brevity in replacement if possible, but replace_file_content needs contiguous)
+        // Actually, I can replace just the select part if I am careful with lines.
+        // But I also need to replace the mapping part which is further down.
+        // I will do 2 Replace calls.
+
 
         // --- HIERARCHY PERMISSION FILTER ---
         if (viewingUser && viewingUser.role !== 'ADMIN') {
@@ -252,6 +261,7 @@ export const SupabaseDB = {
             userId: o.technician_id,
             userName: o.team_members?.name || 'Técnico', // Flatten joined data
             registeredByUserId: o.registered_by,
+            creatorName: (o.creator_profile?.nickname || o.creator_profile?.name) || 'Sistema',
             date: o.date,
             time: o.time,
             category: o.category,

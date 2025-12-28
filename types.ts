@@ -87,6 +87,7 @@ export interface Occurrence {
   userId: string;
   userName: string;
   registeredByUserId: string;
+  creatorName?: string; // Name of the user who registered the occurrence
   date: string;
   time: string;
   category: string;

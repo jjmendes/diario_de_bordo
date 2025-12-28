@@ -530,6 +530,11 @@ export const OccurrenceList: React.FC<OccurrenceListProps> = ({ users = [], curr
                     <td className="px-1.5 py-2">
                       <div className="font-semibold text-[#404040] whitespace-nowrap">{formatDate(o.date)}</div>
                       <div className="text-[10px] text-slate-500">{o.time}</div>
+                      {o.creatorName && (
+                        <div className="text-[8px] text-slate-400 mt-1 truncate max-w-[70px]" title={`Registrado por: ${o.creatorName}`}>
+                          Por: {o.creatorName.split(' ')[0]}
+                        </div>
+                      )}
                     </td>
                     <td className="px-1.5 py-2">
                       <div className="font-bold text-[9px] text-[#940910] bg-[#940910]/5 px-1 rounded inline-block truncate max-w-full" title={o.cluster}>{o.cluster || '-'}</div>
