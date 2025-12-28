@@ -330,6 +330,11 @@ export const AdminTeamManagement: React.FC<AdminTeamManagementProps> = ({
 
                             {/* Row 2: Add Actions */}
                             <div className="flex flex-wrap gap-2 justify-end w-full">
+                                <div className="flex items-center gap-1 pr-2 border-r border-slate-200 mr-2">
+                                    <button onClick={handleExportGestores} className="p-2 rounded hover:bg-slate-100 text-slate-500 transition-colors" title="Exportar Base Completa"><Download size={18} /></button>
+                                    <button onClick={handleDownloadTemplate} className="p-2 rounded hover:bg-slate-100 text-slate-500 transition-colors" title="Modelo CSV (Vazio)"><FileDown size={18} /></button>
+                                    <button onClick={() => fileInputRef.current?.click()} className="p-2 rounded hover:bg-red-50 text-[#940910] transition-colors" title="Importar Base CSV"><Upload size={18} /></button>
+                                </div>
                                 <Button variant="outline" onClick={() => {
                                     setFormType('GESTOR');
                                     setNewTeamRole(TeamMemberRole.SUPERVISOR);
@@ -362,6 +367,11 @@ export const AdminTeamManagement: React.FC<AdminTeamManagementProps> = ({
                     ) : (
                         // TEAM MODE Buttons
                         <div className="flex flex-wrap items-center justify-end w-full gap-2 border-t pt-4 border-slate-100 md:border-t-0 md:pt-0">
+                            <div className="flex items-center gap-1 pr-2 border-r border-slate-200 mr-2">
+                                <button onClick={handleExportTeam} className="p-2 rounded hover:bg-slate-100 text-slate-500 transition-colors" title="Exportar Base Completa"><Download size={18} /></button>
+                                <button onClick={handleDownloadTemplate} className="p-2 rounded hover:bg-slate-100 text-slate-500 transition-colors" title="Modelo CSV (Vazio)"><FileDown size={18} /></button>
+                                <button onClick={() => fileInputRef.current?.click()} className="p-2 rounded hover:bg-red-50 text-[#940910] transition-colors" title="Importar Base CSV"><Upload size={18} /></button>
+                            </div>
                             <Button variant="outline" onClick={() => {
                                 if (isAddingTeam) {
                                     setIsAddingTeam(false);
@@ -593,13 +603,7 @@ export const AdminTeamManagement: React.FC<AdminTeamManagementProps> = ({
                             {showInactive ? 'Ocultar Inativos' : 'Ver Inativos'}
                         </button>
 
-                        {(mode === 'GESTORES' || mode === 'TEAM') && (
-                            <div className="flex items-center gap-1 pl-2 border-l border-slate-200">
-                                <button onClick={mode === 'TEAM' ? handleExportTeam : handleExportGestores} className="p-2 rounded hover:bg-slate-100 text-slate-500 transition-colors" title="Exportar Base Completa"><Download size={18} /></button>
-                                <button onClick={handleDownloadTemplate} className="p-2 rounded hover:bg-slate-100 text-slate-500 transition-colors" title="Modelo CSV (Vazio)"><FileDown size={18} /></button>
-                                <button onClick={() => fileInputRef.current?.click()} className="p-2 rounded hover:bg-red-50 text-[#940910] transition-colors" title="Importar Base CSV"><Upload size={18} /></button>
-                            </div>
-                        )}
+
                     </div>
                 </div>
 
