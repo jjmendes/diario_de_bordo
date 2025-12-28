@@ -392,14 +392,14 @@ export const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
 
                 <div className="overflow-x-auto">
                     <table className="w-full text-sm text-left">
-                        <thead className="bg-[#940910] text-white">
+                        <thead className="bg-[#940910] text-white font-bold border-b border-[#940910]">
                             <tr>
-                                <th className="p-3 font-semibold rounded-tl-lg">Cód.</th>
-                                <th className="p-3 font-semibold">Nome do Colaborador</th>
-                                <th className="p-3 font-semibold">Perfil</th>
-                                <th className="p-3 font-semibold">Clusters Acesso</th>
-                                <th className="p-3 font-semibold">Filiais Específicas</th>
-                                <th className="p-3 font-semibold text-center rounded-tr-lg">Ações</th>
+                                <th className="p-3 border-r border-white/20">Cód.</th>
+                                <th className="p-3 border-r border-white/20">Nome do Colaborador</th>
+                                <th className="p-3 border-r border-white/20">Perfil</th>
+                                <th className="p-3 border-r border-white/20">Clusters Acesso</th>
+                                <th className="p-3 border-r border-white/20">Filiais Específicas</th>
+                                <th className="p-3 text-center">Ações</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100">

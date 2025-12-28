@@ -2,7 +2,7 @@
 import React, { useState, useRef } from 'react';
 import { TeamMember, TeamMemberRole, UserRole, User } from '../../types';
 import { SupabaseDB } from '../../services/supabaseDb';
-import { Card, Button, Badge } from '../UiComponents';
+import { Card, Button, Badge, CustomSelect } from '../UiComponents';
 import { Upload, Trash2, UserPlus, Users, Search, FileDown, HardHat, Download, Pencil, FilterX, AlertTriangle, CheckCircle, X } from 'lucide-react';
 
 interface AdminTeamManagementProps {
@@ -31,6 +31,10 @@ export const AdminTeamManagement: React.FC<AdminTeamManagementProps> = ({
     const [formType, setFormType] = useState<'GESTOR' | 'TECNICO'>(mode === 'TEAM' ? 'TECNICO' : 'GESTOR');
     const [editingOriginalId, setEditingOriginalId] = useState<string | null>(null);
     const [internalLoading, setInternalLoading] = useState(false);
+
+    // Filters for Gestores
+    const [gestorClusterFilter, setGestorClusterFilter] = useState('');
+    const [gestorBranchFilter, setGestorBranchFilter] = useState('');
 
     // Form Fields
     const [newTeamName, setNewTeamName] = useState('');
@@ -92,19 +96,37 @@ export const AdminTeamManagement: React.FC<AdminTeamManagementProps> = ({
 
     const data = teamMembers.filter(m => mode === 'TEAM' ? m.role === TeamMemberRole.TECNICO : m.role !== TeamMemberRole.TECNICO);
 
+    // Filter Options Calculation
+    const uniqueBranchesForFilter = Array.from(new Set(
+        data
+            .filter(m => !gestorClusterFilter || m.cluster === gestorClusterFilter)
+            .map(m => m.filial)
+            .filter(Boolean)
+    )).sort();
+
     const filteredData = data.filter(m => {
+        // 1. Inactive Check
+        if (!showInactive && !m.active) return false;
+
+        // 2. Search Check
         const matchesSearch = m.name.toLowerCase().includes(searchTeamTerm.toLowerCase()) ||
             m.id.toLowerCase().includes(searchTeamTerm.toLowerCase()) ||
             (m.filial && m.filial.toLowerCase().includes(searchTeamTerm.toLowerCase())) ||
             (m.supervisorId && m.supervisorId.toLowerCase().includes(searchTeamTerm.toLowerCase()));
 
-        const hasError = !m.supervisorId || !isSupervisorValid(m.supervisorId);
+        if (!matchesSearch) return false;
 
-        // Filter Inactive Logic
-        if (!showInactive && !m.active) return false;
+        // 3. Gestor Filters
+        if (gestorClusterFilter && m.cluster !== gestorClusterFilter) return false;
+        if (gestorBranchFilter && m.filial !== gestorBranchFilter) return false;
 
-        if (showTeamErrorsOnly && mode === 'TEAM') return matchesSearch && hasError;
-        return matchesSearch;
+        // 4. Team Errors (only for TEAM mode)
+        if (mode === 'TEAM' && showTeamErrorsOnly) {
+            const hasError = !m.supervisorId || !isSupervisorValid(m.supervisorId);
+            if (!hasError) return false;
+        }
+
+        return true;
     });
 
     // --- HANDLERS ---
@@ -464,6 +486,28 @@ export const AdminTeamManagement: React.FC<AdminTeamManagementProps> = ({
                     <div className="font-bold text-[#404040] text-lg">
                         {mode === 'TEAM' ? `Base de Técnicos (${filteredData.length})` : `Gestores Cadastrados (${filteredData.length})`}
                     </div>
+
+                    {/* Filters for Gestores */}
+                    {mode === 'GESTORES' && (
+                        <div className="flex items-center gap-2 flex-1 max-w-xl mx-4">
+                            <div className="w-1/2">
+                                <CustomSelect
+                                    value={gestorClusterFilter}
+                                    onChange={(val) => { setGestorClusterFilter(val); setGestorBranchFilter(''); }}
+                                    options={[{ label: 'Todos Clusters', value: '' }, ...uniqueClusters.map(c => ({ label: c, value: c }))]}
+                                    placeholder="Cluster"
+                                />
+                            </div>
+                            <div className="w-1/2">
+                                <CustomSelect
+                                    value={gestorBranchFilter}
+                                    onChange={setGestorBranchFilter}
+                                    options={[{ label: 'Todas Filiais', value: '' }, ...uniqueBranchesForFilter.map(b => ({ label: b, value: b }))]}
+                                    placeholder="Filial"
+                                />
+                            </div>
+                        </div>
+                    )}
                     <div className="flex items-center gap-3">
                         <div className="relative">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
