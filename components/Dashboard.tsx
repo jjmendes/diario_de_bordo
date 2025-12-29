@@ -58,6 +58,7 @@ export const Dashboard: React.FC<DashboardProps> = () => {
   const [availableSectors, setAvailableSectors] = useState<string[]>([]);
   const [availableCategories, setAvailableCategories] = useState<string[]>([]);
   const [availableReasons, setAvailableReasons] = useState<string[]>([]); // All reasons flattening
+  const [geoStructure, setGeoStructure] = useState<any[]>([]); // Full hierarchy for local filtering
 
   // --- Pareto Specific Filter State ---
   const [paretoCategory, setParetoCategory] = useState(''); // Not used in RPC yet? Or RPC returns global. 
@@ -76,6 +77,15 @@ export const Dashboard: React.FC<DashboardProps> = () => {
   const [rankingCategory, setRankingCategory] = useState('');
   const [rankingReason, setRankingReason] = useState('');
 
+  // --- Pareto Specific Filter State ---
+  const [paretoData, setParetoData] = useState<any[]>([]);
+  const [paretoLoading, setParetoLoading] = useState(false);
+  const [paretoFilters, setParetoFilters] = useState({
+    cluster: '',
+    branch: '',
+    category: ''
+  });
+
   // --- KPI Modal State (Drill Down) ---
   // Since we don't have raw rows, we must FETCH drill down data when modal opens.
   const [detailsModalType, setDetailsModalType] = useState<'ALL' | 'PENDING' | 'TREATED' | null>(null);
@@ -86,8 +96,9 @@ export const Dashboard: React.FC<DashboardProps> = () => {
   useEffect(() => {
     const loadOptions = async () => {
       // Load Geo Structure
-      const clusters = await SupabaseDB.getClusterList();
-      setAvailableClusters(clusters);
+      const geo = await SupabaseDB.getGeoHierarchy();
+      setGeoStructure(geo);
+      setAvailableClusters(geo.map(c => c.name));
 
       // Load Reasons/Categories
       const reasonTree = await SupabaseDB.getReasonHierarchy();
@@ -161,6 +172,45 @@ export const Dashboard: React.FC<DashboardProps> = () => {
   useEffect(() => {
     fetchMetrics();
   }, [fetchMetrics]);
+
+  // --- FETCH PARETO METRICS (Independent) ---
+  const fetchParetoMetrics = useCallback(async () => {
+    setParetoLoading(true);
+    try {
+      const pCluster = paretoFilters.cluster || selectedCluster;
+      const pBranch = paretoFilters.branch || selectedBranch;
+
+      const rawData = await SupabaseDB.getParetoChartData({
+        startDate: dateStart,
+        endDate: dateEnd,
+        cluster: pCluster || undefined,
+        branch: pBranch || undefined,
+        category: paretoFilters.category || undefined
+      });
+
+      // Calculate Cumulative Percentage
+      const total = rawData.reduce((sum: number, item: any) => sum + parseInt(item.count), 0);
+      let cumulative = 0;
+      const processed = rawData.map((item: any) => {
+        const count = parseInt(item.count);
+        cumulative += count;
+        return {
+          name: item.name,
+          count: count,
+          cumulativePercentage: total === 0 ? 0 : Math.round((cumulative / total) * 100)
+        };
+      });
+      setParetoData(processed);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setParetoLoading(false);
+    }
+  }, [dateStart, dateEnd, selectedCluster, selectedBranch, paretoFilters]);
+
+  useEffect(() => {
+    fetchParetoMetrics();
+  }, [fetchParetoMetrics]);
 
   // --- FETCH RANKING ---
   useEffect(() => {
@@ -409,13 +459,53 @@ export const Dashboard: React.FC<DashboardProps> = () => {
             <div className="mb-2 sm:mb-0">
               <h3 className="font-bold text-[#404040] text-lg flex items-center gap-2">
                 <Activity size={20} className="text-[#F6B700]" />
-                Pareto (Motivos Ofensores - Filtro Global)
+                Pareto (Motivos Ofensores)
               </h3>
             </div>
+            {/* Pareto Filters */}
+            <div className="flex flex-wrap gap-2 w-full sm:w-auto">
+              <div className="w-32">
+                <CustomSelect
+                  value={paretoFilters.category}
+                  onChange={(v) => setParetoFilters(prev => ({ ...prev, category: v }))}
+                  options={[{ label: 'Categoria', value: '' }, ...availableCategories.map(c => ({ label: c, value: c }))]}
+                  placeholder="Categoria"
+                  className="h-8 text-xs"
+                />
+              </div>
+              <div className="w-32">
+                <CustomSelect
+                  value={paretoFilters.cluster}
+                  onChange={(v) => setParetoFilters(prev => ({ ...prev, cluster: v, branch: '' }))}
+                  options={[{ label: 'Cluster', value: '' }, ...availableClusters.map(c => ({ label: c, value: c }))]}
+                  placeholder="Cluster"
+                  className="h-8 text-xs"
+                />
+              </div>
+              <div className="w-32">
+                {/* Logic to filter branches based on Pareto Cluster OR Global Cluster if Pareto is empty */}
+                {(() => {
+                  const activeClusterName = paretoFilters.cluster || selectedCluster;
+                  const activeCluster = geoStructure.find(c => c.name === activeClusterName);
+                  const pBranches = activeCluster ? activeCluster.branches.map((b: any) => b.name).sort() : [];
+
+                  return (
+                    <CustomSelect
+                      value={paretoFilters.branch}
+                      onChange={(v) => setParetoFilters(prev => ({ ...prev, branch: v }))}
+                      options={[{ label: 'Filial', value: '' }, ...pBranches.map((b: string) => ({ label: b, value: b }))]}
+                      placeholder="Filial"
+                      className="h-8 text-xs"
+                    />
+                  );
+                })()}
+              </div>
+            </div>
           </div>
-          <div className="h-[500px] w-full flex-1">
+          <div className="h-[500px] w-full flex-1 relative">
+            {paretoLoading && <div className="absolute inset-0 bg-white/50 z-10 flex items-center justify-center"><Loader2 className="animate-spin text-[#940910]" /></div>}
             <ResponsiveContainer width="100%" height="100%">
-              <ComposedChart data={metrics.pareto_reasons} margin={{ top: 20, right: 30, left: 20, bottom: 120 }}>
+              <ComposedChart data={paretoData} margin={{ top: 20, right: 30, left: 20, bottom: 120 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
                 <XAxis dataKey="name" tick={{ fill: '#404040', fontSize: 11 }} angle={-25} textAnchor="end" interval={0} height={100} />
                 <YAxis yAxisId="left" tick={{ fill: '#404040', fontSize: 12 }} axisLine={false} tickLine={false} />

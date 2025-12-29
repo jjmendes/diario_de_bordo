@@ -302,6 +302,22 @@ export const SupabaseDB = {
         return data;
     },
 
+    async getParetoChartData(filters: { startDate: string, endDate: string, cluster?: string, branch?: string, category?: string }): Promise<any[]> {
+        const { data, error } = await supabase.rpc('get_pareto_chart_data', {
+            p_start_date: filters.startDate,
+            p_end_date: filters.endDate,
+            p_cluster: filters.cluster,
+            p_branch: filters.branch,
+            p_category: filters.category
+        });
+
+        if (error) {
+            console.error("Error fetching pareto data:", error);
+            return [];
+        }
+        return data;
+    },
+
     async getTechnicianRanking(filters: { year?: string, month?: string, category?: string, reason?: string }): Promise<any[]> {
         const { data, error } = await supabase.rpc('get_technician_ranking', {
             p_year: filters.year,
