@@ -1,8 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { User, UserRole, TeamMember } from '../../types';
+import { User, UserRole, TeamMember, TeamMemberRole } from '../../types';
 import { SupabaseDB } from '../../services/supabaseDb';
 import { Card, Button } from '../UiComponents';
-import { Upload, Trash2, UserPlus, FileDown, Pencil, MapPin, Search, Download } from 'lucide-react';
+import { Upload, Trash2, UserPlus, FileDown, Pencil, MapPin, Search, Download, Users } from 'lucide-react';
 
 interface AdminUserManagementProps {
     users: User[];
@@ -44,6 +44,16 @@ export const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
     const [editingUserOriginalId, setEditingUserOriginalId] = useState<string | null>(null);
     const [internalLoading, setInternalLoading] = useState(false);
     const userFileInputRef = useRef<HTMLInputElement>(null);
+    const [availableSupervisors, setAvailableSupervisors] = useState<{ id: string, name: string }[]>([]);
+
+    useEffect(() => {
+        const loadInitialData = async () => {
+            const team = await SupabaseDB.getMyTeam('admin', 'ADMIN'); // Fetch all as admin
+            const sups = team.filter(m => m.role === TeamMemberRole.SUPERVISOR).map(m => ({ id: m.id, name: m.name }));
+            setAvailableSupervisors(sups.sort((a, b) => a.name.localeCompare(b.name)));
+        };
+        loadInitialData();
+    }, []);
 
     // Helper: Download Template
     const handleDownloadUserTemplate = () => {
@@ -99,6 +109,7 @@ export const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
                     allowedClusters: newUserProps.allowedClusters,
                     allowedBranches: newUserProps.allowedBranches,
                     teamMemberId: newUserProps.teamMemberId,
+                    allowedSupervisors: newUserProps.allowedSupervisors,
                     ...(newUserProps.password ? { password: newUserProps.password } : {})
                 };
                 try {
@@ -123,7 +134,8 @@ export const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
                         role: newUserProps.role,
                         allowedClusters: newUserProps.allowedClusters,
                         allowedBranches: newUserProps.allowedBranches,
-                        teamMemberId: newUserProps.teamMemberId
+                        teamMemberId: newUserProps.teamMemberId,
+                        allowedSupervisors: newUserProps.allowedSupervisors
                     });
 
                     if (result.success) {
@@ -146,18 +158,19 @@ export const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
     };
 
     // Handler: Delete User
-    const handleDeleteUser = async (e: React.MouseEvent, id: string) => {
-        e.stopPropagation();
-        e.preventDefault();
-        if (window.confirm("ATENÇÃO: Excluir um usuário é irreversível!\n\nTem certeza que deseja excluir este usuário?")) {
+    const handleDeleteUser = async (user: User) => {
+        if (confirm(`Tem certeza que deseja excluir o usuário ${user.name}? Esta ação não pode ser desfeita.`)) {
             setInternalLoading(true);
             try {
-                await SupabaseDB.deleteUser(id);
+                await SupabaseDB.deleteUser(user.id);
                 alert("Usuário excluído com sucesso!");
+                if (editingUserOriginalId === user.id) {
+                    handleResetForm();
+                }
                 await onRefresh();
             } catch (e: any) {
-                console.error(e);
-                alert(`Erro ao excluir usuário: ${e.message || 'Erro desconhecido'}`);
+                console.error("Erro ao excluir:", e);
+                alert(`Erro ao excluir usuário: ${e.message}`);
             } finally {
                 setInternalLoading(false);
             }
@@ -166,7 +179,18 @@ export const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
 
     // Utility: Reset Form
     const handleResetForm = () => {
-        setNewUserProps({ name: '', id: '', email: '', nickname: '', password: '', role: UserRole.CONTROLADOR, allowedClusters: [], allowedBranches: [], teamMemberId: '' });
+        setNewUserProps({
+            name: '',
+            id: '',
+            email: '',
+            nickname: '',
+            password: '',
+            role: UserRole.CONTROLADOR,
+            allowedClusters: [],
+            allowedBranches: [],
+            teamMemberId: '',
+            allowedSupervisors: []
+        });
         setIsAddingUser(false);
         setEditingUserOriginalId(null);
         setIsLinking(false);
@@ -182,7 +206,8 @@ export const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
             role: user.role,
             allowedClusters: user.allowedClusters || [],
             allowedBranches: user.allowedBranches || [],
-            teamMemberId: user.teamMemberId
+            teamMemberId: user.teamMemberId,
+            allowedSupervisors: user.allowedSupervisors || []
         });
         setEditingUserOriginalId(user.id);
         setIsAddingUser(true);
@@ -247,7 +272,7 @@ export const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
         u.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         u.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
         (u.email && u.email.toLowerCase().includes(searchTerm.toLowerCase()))
-    );
+    ).sort((a, b) => a.name.localeCompare(b.name));
 
     return (
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-300">
@@ -299,28 +324,50 @@ export const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
                                 <label className="block text-xs font-medium mb-1 text-[#404040]">Email</label>
                                 <input type="email" className="w-full border rounded p-2 text-sm bg-white" value={newUserProps.email} onChange={e => setNewUserProps({ ...newUserProps, email: e.target.value })} placeholder="Ex: carlos@empresa.com" />
                             </div>
-                            <div>
-                                <label className="block text-xs font-medium mb-1 text-[#404040]">Apelido (Nome Curto)</label>
-                                <input className="w-full border rounded p-2 text-sm bg-white" value={newUserProps.nickname} onChange={e => setNewUserProps({ ...newUserProps, nickname: e.target.value })} placeholder="Ex: Carlão" />
+                            <div className="grid grid-cols-2 gap-2">
+                                <div>
+                                    <label className="block text-xs font-medium mb-1 text-[#404040]">Apelido</label>
+                                    <input className="w-full border rounded p-2 text-sm bg-white" value={newUserProps.nickname} onChange={e => setNewUserProps({ ...newUserProps, nickname: e.target.value })} placeholder="Ex: Carlão" />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-medium mb-1 text-[#404040]">Perfil</label>
+                                    <select className="w-full border rounded p-2 text-sm bg-white" value={newUserProps.role} onChange={e => setNewUserProps({ ...newUserProps, role: e.target.value as UserRole })}>
+                                        <option value={UserRole.CONTROLADOR}>Operador</option>
+                                        <option value={UserRole.ADMIN}>Admin</option>
+                                    </select>
+                                </div>
                             </div>
                         </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                                <label className="block text-xs font-medium mb-1 text-[#404040]">Perfil</label>
-                                <select className="w-full border rounded p-2 text-sm bg-white" value={newUserProps.role} onChange={e => setNewUserProps({ ...newUserProps, role: e.target.value as UserRole })}>
-                                    <option value={UserRole.CONTROLADOR}>Controlador (Operador)</option>
-                                    <option value={UserRole.ADMIN}>Administrador</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label className="block text-xs font-medium mb-1 text-[#404040]">Código Controlador (4 Dígitos)</label>
-                                <input
-                                    className="w-full border rounded p-2 text-sm bg-white border-blue-300 focus:border-blue-500 ring-1 ring-blue-50"
-                                    value={newUserProps.teamMemberId || ''}
-                                    onChange={e => setNewUserProps({ ...newUserProps, teamMemberId: e.target.value, id: editingUserOriginalId ? newUserProps.id : e.target.value })}
-                                    placeholder="Ex: 4055"
-                                    required
-                                />
+
+                        {/* --- SUPERVISOR LINKING SECTION --- */}
+                        <div className="pt-4 border-t border-slate-100">
+                            <h4 className="font-bold text-[#404040] mb-2 flex items-center gap-2">
+                                <Users size={16} className="text-[#940910]" />
+                                Vínculo com Equipe (Supervisores)
+                            </h4>
+                            <p className="text-xs text-slate-500 mb-4">Selecione os supervisores que este usuário deve monitorar. O usuário verá todos os técnicos subordinados a estes supervisores.</p>
+
+                            <div className="bg-slate-50 p-4 rounded-lg border border-slate-200">
+                                <div className="max-h-60 overflow-y-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+                                    {availableSupervisors.map(sup => (
+                                        <label key={sup.id} className="flex items-center gap-2 p-2 bg-white rounded border border-slate-200 hover:border-[#940910] cursor-pointer">
+                                            <input
+                                                type="checkbox"
+                                                checked={newUserProps.allowedSupervisors?.includes(sup.id)}
+                                                onChange={() => {
+                                                    setNewUserProps(prev => {
+                                                        const current = prev.allowedSupervisors || [];
+                                                        if (current.includes(sup.id)) return { ...prev, allowedSupervisors: current.filter(id => id !== sup.id) };
+                                                        else return { ...prev, allowedSupervisors: [...current, sup.id] };
+                                                    });
+                                                }}
+                                                className="rounded text-[#940910] focus:ring-[#940910]"
+                                            />
+                                            <span className="text-xs font-medium text-[#404040] truncate" title={sup.name}>{sup.name}</span>
+                                        </label>
+                                    ))}
+                                    {availableSupervisors.length === 0 && <p className="text-xs text-slate-400 col-span-3">Nenhum supervisor encontrado na base.</p>}
+                                </div>
                             </div>
                         </div>
                         <div className="bg-slate-50 p-3 rounded border border-slate-200">
@@ -395,8 +442,7 @@ export const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
                     <table className="w-full text-sm text-left">
                         <thead className="bg-[#940910] text-white font-bold border-b border-[#940910]">
                             <tr>
-                                <th className="p-3 border-r border-white/20">Cód.</th>
-                                <th className="p-3 border-r border-white/20">Nome do Colaborador</th>
+                                <th className="p-3 border-r border-white/20">Nome do Controlador</th>
                                 <th className="p-3 border-r border-white/20">Perfil</th>
                                 <th className="p-3 border-r border-white/20">Clusters Acesso</th>
                                 <th className="p-3 border-r border-white/20">Filiais Específicas</th>
@@ -422,7 +468,6 @@ export const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
                             ) : (
                                 filteredUsers.map((user) => (
                                     <tr key={user.id} className="hover:bg-slate-50 transition-colors group">
-                                        <td className="p-3 font-medium text-slate-700 text-center">{user.teamMemberId || '-'}</td>
                                         <td className="p-3 text-slate-600">
                                             <div className="flex flex-col">
                                                 <span className="font-medium">{user.name}</span>
@@ -448,7 +493,7 @@ export const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
                                                 : <span className="italic text-slate-400">Todas do Cluster</span>}
                                         </td>
                                         <td className="p-3 text-center">
-                                            <div className="flex items-center justify-center gap-2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                                            <div className="flex items-center justify-center gap-2 transition-opacity">
                                                 <button
                                                     onClick={() => handleEditUser(user)}
                                                     className="p-1.5 text-blue-600 hover:bg-blue-50 rounded transition-colors"
@@ -457,7 +502,7 @@ export const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
                                                     <Pencil size={16} />
                                                 </button>
                                                 <button
-                                                    onClick={(e) => handleDeleteUser(e, user.id)}
+                                                    onClick={() => handleDeleteUser(user)}
                                                     className="p-1.5 text-red-600 hover:bg-red-50 rounded transition-colors"
                                                     title="Excluir"
                                                     disabled={user.id === 'admin'}

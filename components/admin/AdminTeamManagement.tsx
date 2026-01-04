@@ -402,13 +402,23 @@ export const AdminTeamManagement: React.FC<AdminTeamManagementProps> = ({
                                     <input className="w-full border rounded p-2 text-sm bg-white font-mono" value={newTeamId} onChange={e => setNewTeamId(e.target.value)} required placeholder="Ex: T001" />
                                 </div>
                             )}
-                            <div className={formType === 'TECNICO' ? "md:col-span-3" : "md:col-span-4"}>
+                            <div className={formType === 'TECNICO' ? "md:col-span-3" : "md:col-span-3"}>
                                 <label className="block text-xs font-bold mb-1 text-[#404040]">Nome Completo *</label>
                                 <input className="w-full border rounded p-2 text-sm bg-white" value={newTeamName} onChange={e => setNewTeamName(e.target.value)} required placeholder="Ex: João da Silva" />
                             </div>
+                            {formType !== 'TECNICO' && (
+                                <div className="md:col-span-1">
+                                    <label className="block text-xs font-bold mb-1 text-[#404040]">Cargo</label>
+                                    <select className="w-full border rounded p-2 text-sm bg-white" value={newTeamRole} onChange={e => setNewTeamRole(e.target.value as TeamMemberRole)}>
+                                        <option value={TeamMemberRole.SUPERVISOR}>{TeamMemberRole.SUPERVISOR}</option>
+                                        <option value={TeamMemberRole.COORDENADOR}>{TeamMemberRole.COORDENADOR}</option>
+                                        <option value={TeamMemberRole.GERENTE}>{TeamMemberRole.GERENTE}</option>
+                                    </select>
+                                </div>
+                            )}
                         </div>
 
-                        {/* Middle Row: Hierarchy */}
+                        {/* Middle Row: Hierarchy & Details */}
                         {formType === 'TECNICO' ? (
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 bg-slate-50 p-3 rounded border border-slate-200">
                                 <div>
@@ -440,63 +450,71 @@ export const AdminTeamManagement: React.FC<AdminTeamManagementProps> = ({
                                 </div>
                             </div>
                         ) : (
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-slate-50 p-3 rounded border border-slate-200">
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 bg-slate-50 p-3 rounded border border-slate-200">
                                 <div>
-                                    <label className="block text-xs font-bold mb-1 text-[#404040]">Cargo</label>
-                                    <select className="w-full border rounded p-2 text-sm bg-white" value={newTeamRole} onChange={e => setNewTeamRole(e.target.value as TeamMemberRole)}>
-                                        <option value={TeamMemberRole.SUPERVISOR}>{TeamMemberRole.SUPERVISOR}</option>
-                                        <option value={TeamMemberRole.COORDENADOR}>{TeamMemberRole.COORDENADOR}</option>
-                                        <option value={TeamMemberRole.GERENTE}>{TeamMemberRole.GERENTE}</option>
+                                    <label className="block text-xs font-bold mb-1 text-[#404040]">Superior Imediato</label>
+                                    <select className="w-full border rounded p-2 text-sm bg-white" value={newTeamReportsTo} disabled={newTeamRole === TeamMemberRole.GERENTE} onChange={e => setNewTeamReportsTo(e.target.value)}>
+                                        <option value="">{newTeamRole === TeamMemberRole.GERENTE ? 'N/A' : 'Selecione...'}</option>
+                                        {teamMembers
+                                            .filter(m => {
+                                                if (newTeamRole === TeamMemberRole.SUPERVISOR) return m.role === TeamMemberRole.COORDENADOR;
+                                                if (newTeamRole === TeamMemberRole.COORDENADOR) return m.role === TeamMemberRole.GERENTE;
+                                                return false;
+                                            })
+                                            .map(m => <option key={m.id} value={m.id}>{m.name} ({m.role})</option>)
+                                        }
                                     </select>
                                 </div>
-                                {newTeamRole !== TeamMemberRole.GERENTE && (
-                                    <div>
-                                        <label className="block text-xs font-bold mb-1 text-[#404040]">Superior Imediato (ID Reports To)</label>
-                                        <select className="w-full border rounded p-2 text-sm bg-white" value={newTeamReportsTo} onChange={e => setNewTeamReportsTo(e.target.value)}>
-                                            <option value="">Selecione...</option>
-                                            {teamMembers
-                                                .filter(m => {
-                                                    if (newTeamRole === TeamMemberRole.SUPERVISOR) return m.role === TeamMemberRole.COORDENADOR;
-                                                    if (newTeamRole === TeamMemberRole.COORDENADOR) return m.role === TeamMemberRole.GERENTE;
-                                                    return false;
-                                                })
-                                                .map(m => <option key={m.id} value={m.id}>{m.name} ({m.role})</option>)
-                                            }
-                                        </select>
-                                    </div>
-                                )}
+                                <div>
+                                    <label className="block text-xs font-bold mb-1 text-[#404040]">Cluster (Região)</label>
+                                    <select className="w-full border rounded p-2 text-sm bg-white" value={newTeamCluster} onChange={e => setNewTeamCluster(e.target.value)}>
+                                        <option value="">Selecione...</option>
+                                        {uniqueClusters.map(c => <option key={c} value={c}>{c}</option>)}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-bold mb-1 text-[#404040]">Filial</label>
+                                    <select className="w-full border rounded p-2 text-sm bg-white" value={newTeamFilial} onChange={e => setNewTeamFilial(e.target.value)}>
+                                        <option value="">Selecione...</option>
+                                        {uniqueBranches.map(b => <option key={b} value={b}>{b}</option>)}
+                                    </select>
+                                </div>
                             </div>
                         )}
 
                         {/* Bottom Row: Location & Details */}
+                        {/* Bottom Row: Location & Details */}
                         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                            <div>
-                                <label className="block text-xs font-bold mb-1 text-[#404040]">Controlador/Despacho</label>
-                                <input className="w-full border rounded p-2 text-sm bg-white" value={newTeamControlador} onChange={e => setNewTeamControlador(e.target.value)} placeholder="Opcional" />
-                            </div>
-                            <div>
-                                <label className="block text-xs font-bold mb-1 text-[#404040]">Cluster (Região)</label>
-                                <select className="w-full border rounded p-2 text-sm bg-white" value={newTeamCluster} onChange={e => setNewTeamCluster(e.target.value)}>
-                                    <option value="">Selecione...</option>
-                                    {uniqueClusters.map(c => <option key={c} value={c}>{c}</option>)}
-                                </select>
-                            </div>
-                            <div>
-                                <label className="block text-xs font-bold mb-1 text-[#404040]">Filial</label>
-                                <select className="w-full border rounded p-2 text-sm bg-white" value={newTeamFilial} onChange={e => setNewTeamFilial(e.target.value)}>
-                                    <option value="">Selecione...</option>
-                                    {uniqueBranches.map(b => <option key={b} value={b}>{b}</option>)}
-                                </select>
-                            </div>
+                            {/* ONLY SHOW LAST ROW FOR TECHNICIANS now, since Gestores are handled above */}
                             {formType === 'TECNICO' && (
-                                <div>
-                                    <label className="block text-xs font-bold mb-1 text-[#404040]">Segmento</label>
-                                    <select className="w-full border rounded p-2 text-sm bg-white" value={newTeamSegment} onChange={e => setNewTeamSegment(e.target.value as 'BA' | 'TT')}>
-                                        <option value="">Selecione...</option>
-                                        <option value="BA">BA (Banda Larga)</option>
-                                        <option value="TT">TT (Técnico)</option>
-                                    </select>
-                                </div>
+                                <>
+                                    <div>
+                                        <label className="block text-xs font-bold mb-1 text-[#404040]">Controlador/Despacho</label>
+                                        <input className="w-full border rounded p-2 text-sm bg-white" value={newTeamControlador} onChange={e => setNewTeamControlador(e.target.value)} placeholder="Opcional" />
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-bold mb-1 text-[#404040]">Cluster (Região)</label>
+                                        <select className="w-full border rounded p-2 text-sm bg-white" value={newTeamCluster} onChange={e => setNewTeamCluster(e.target.value)}>
+                                            <option value="">Selecione...</option>
+                                            {uniqueClusters.map(c => <option key={c} value={c}>{c}</option>)}
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-bold mb-1 text-[#404040]">Filial</label>
+                                        <select className="w-full border rounded p-2 text-sm bg-white" value={newTeamFilial} onChange={e => setNewTeamFilial(e.target.value)}>
+                                            <option value="">Selecione...</option>
+                                            {uniqueBranches.map(b => <option key={b} value={b}>{b}</option>)}
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-bold mb-1 text-[#404040]">Segmento</label>
+                                        <select className="w-full border rounded p-2 text-sm bg-white" value={newTeamSegment} onChange={e => setNewTeamSegment(e.target.value as 'BA' | 'TT')}>
+                                            <option value="">Selecione...</option>
+                                            <option value="BA">BA (Banda Larga)</option>
+                                            <option value="TT">TT (Técnico)</option>
+                                        </select>
+                                    </div>
+                                </>
                             )}
                         </div>
 
@@ -506,8 +524,9 @@ export const AdminTeamManagement: React.FC<AdminTeamManagementProps> = ({
                             </Button>
                         </div>
                     </form>
-                </Card>
-            )}
+                </Card >
+            )
+            }
 
             {/* Table */}
             <Card>
@@ -632,16 +651,13 @@ export const AdminTeamManagement: React.FC<AdminTeamManagementProps> = ({
                                     </>
                                 ) : (
                                     <>
-                                        <th className="px-3 py-3 border-r border-white/20 whitespace-nowrap w-14 text-center">ID</th>
                                         <th className="px-3 py-3 border-r border-white/20 whitespace-nowrap min-w-[200px] text-center">Nome</th>
                                         <th className="px-3 py-3 border-r border-white/20 whitespace-nowrap text-center">Cargo</th>
                                         <th className="px-3 py-3 border-r border-white/20 whitespace-nowrap text-center">Superior Imediato</th>
-                                        <th className="px-3 py-3 border-r border-white/20 whitespace-nowrap text-center">Controlador</th>
                                         <th className="px-3 py-3 border-r border-white/20 whitespace-nowrap text-center">Cluster</th>
                                         <th className="px-3 py-3 border-r border-white/20 whitespace-nowrap text-center">Filial</th>
                                     </>
                                 )}
-                                <th className="px-3 py-3 border-r border-white/20 whitespace-nowrap text-center">Status</th>
                                 <th className="px-3 py-3 text-center whitespace-nowrap">Ações</th>
                             </tr>
                         </thead>
@@ -691,8 +707,7 @@ export const AdminTeamManagement: React.FC<AdminTeamManagementProps> = ({
                                         </>
                                     ) : (
                                         <>
-                                            <td className="px-3 py-2 text-[11px] font-mono font-bold text-[#404040] bg-white border-r border-[#940910]/5">{member.id}</td>
-                                            <td className="px-3 py-2 font-bold text-[#404040] text-xs uppercase">{member.name}</td>
+                                            <td className="px-3 py-2 font-bold text-[#404040] text-xs uppercase border-r border-[#940910]/5">{member.name}</td>
                                             <td className="px-3 py-2">
                                                 <span className={`px-2 py-1 rounded text-[10px] font-bold border ${member.role === TeamMemberRole.SUPERVISOR ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
                                                     member.role === TeamMemberRole.COORDENADOR ? 'bg-blue-50 text-blue-700 border-blue-200' :
@@ -704,16 +719,11 @@ export const AdminTeamManagement: React.FC<AdminTeamManagementProps> = ({
                                             <td className="px-3 py-2 text-[11px] uppercase text-[#404040]">
                                                 {member.reportsToId ? getMemberName(member.reportsToId) : '-'}
                                             </td>
-                                            <td className="px-3 py-2 text-[11px] uppercase">{member.controladorId || '-'}</td>
                                             <td className="px-3 py-2 text-[11px] uppercase font-bold">{member.cluster || '-'}</td>
                                             <td className="px-3 py-2 text-[11px] uppercase">{member.filial || '-'}</td>
                                         </>
                                     )}
-                                    <td className="px-3 py-2">
-                                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${member.active ? 'bg-emerald-50 text-emerald-600 border-emerald-200' : 'bg-red-50 text-red-600 border-red-200'} `}>
-                                            {member.active ? 'ATIVO' : 'INATIVO'}
-                                        </span>
-                                    </td>
+
                                     <td className="px-3 py-2 text-right">
                                         <div className="flex justify-end gap-1">
                                             <button onClick={() => { handleEditTeamMember(member); setTimeout(() => window.scrollTo({ top: 300, behavior: 'smooth' }), 100); }} className="text-blue-500 hover:text-blue-700 p-1 hover:bg-blue-50 rounded transition-colors"><Pencil size={14} /></button>
@@ -727,6 +737,6 @@ export const AdminTeamManagement: React.FC<AdminTeamManagementProps> = ({
                     {filteredData.length === 0 && <div className="p-8 text-center text-slate-400 italic">Nenhum registro encontrado.</div>}
                 </div>
             </Card>
-        </div>
+        </div >
     );
 };

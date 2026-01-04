@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  ComposedChart, Line, LabelList, Cell
+  ComposedChart, Line, LabelList, Cell, Legend
 } from 'recharts';
 import { Occurrence, EscalationLevel, OccurrenceStatus } from '../types';
 import { Card, Modal, Badge, CustomSelect, DateRangePicker } from './UiComponents';
@@ -31,11 +31,28 @@ export const Dashboard: React.FC<DashboardProps> = () => {
   const currentYear = year.toString();
   const currentMonth = (today.getMonth() + 1).toString();
 
-  const [dateStart, setDateStart] = useState(firstDayString);
-  const [dateEnd, setDateEnd] = useState(lastDayString);
-  const [selectedCluster, setSelectedCluster] = useState('');
-  const [selectedBranch, setSelectedBranch] = useState('');
-  const [selectedSector, setSelectedSector] = useState('');
+  // Helper to load from Session Storage
+  const loadState = (key: string, defaultVal: string) => sessionStorage.getItem(`dashboard_${key}`) || defaultVal;
+
+  const [dateStart, setDateStart] = useState(() => loadState('dateStart', firstDayString));
+  const [dateEnd, setDateEnd] = useState(() => loadState('dateEnd', lastDayString));
+  const [selectedCluster, setSelectedCluster] = useState(() => loadState('cluster', ''));
+  const [selectedBranch, setSelectedBranch] = useState(() => loadState('branch', ''));
+  const [selectedSector, setSelectedSector] = useState(() => loadState('sector', ''));
+  const [selectedSupervisor, setSelectedSupervisor] = useState(() => loadState('supervisor', ''));
+
+  // Save to Session Storage on Change
+  useEffect(() => { sessionStorage.setItem('dashboard_dateStart', dateStart); }, [dateStart]);
+  useEffect(() => { sessionStorage.setItem('dashboard_dateEnd', dateEnd); }, [dateEnd]);
+  useEffect(() => { sessionStorage.setItem('dashboard_cluster', selectedCluster); }, [selectedCluster]);
+  useEffect(() => { sessionStorage.setItem('dashboard_branch', selectedBranch); }, [selectedBranch]);
+  useEffect(() => { sessionStorage.setItem('dashboard_sector', selectedSector); }, [selectedSector]);
+  useEffect(() => { sessionStorage.setItem('dashboard_supervisor', selectedSupervisor); }, [selectedSupervisor]);
+
+  // --- Comparative Chart State ---
+  const [matrixGroupBy, setMatrixGroupBy] = useState<'SUPERVISOR' | 'SECTOR'>('SUPERVISOR');
+  const [comparativeData, setComparativeData] = useState<any[]>([]);
+  const [comparativeLoading, setComparativeLoading] = useState(false);
 
   // --- Loading States ---
   const [loading, setLoading] = useState(true);
@@ -55,7 +72,8 @@ export const Dashboard: React.FC<DashboardProps> = () => {
   // --- Filter Options States (Fetched separately) ---
   const [availableClusters, setAvailableClusters] = useState<string[]>([]);
   const [availableBranches, setAvailableBranches] = useState<string[]>([]);
-  const [availableSectors, setAvailableSectors] = useState<string[]>([]);
+  const [availableSectors, setAvailableSectors] = useState<string[]>([]); // Derived from Branch Data Map
+  const [availableSupervisors, setAvailableSupervisors] = useState<{ id: string, name: string }[]>([]);
   const [availableCategories, setAvailableCategories] = useState<string[]>([]);
   const [availableReasons, setAvailableReasons] = useState<string[]>([]); // All reasons flattening
   const [geoStructure, setGeoStructure] = useState<any[]>([]); // Full hierarchy for local filtering
@@ -105,6 +123,10 @@ export const Dashboard: React.FC<DashboardProps> = () => {
       setAvailableCategories(reasonTree.map(r => r.category));
       const allReasons = reasonTree.flatMap(r => r.reasons);
       setAvailableReasons([...new Set(allReasons)].sort());
+
+      // Load Supervisors
+      const supervisors = await SupabaseDB.getAllSupervisorsForFilter();
+      setAvailableSupervisors(supervisors);
     };
     loadOptions();
   }, []);
@@ -127,18 +149,38 @@ export const Dashboard: React.FC<DashboardProps> = () => {
     updateBranches();
   }, [selectedCluster]);
 
+  // --- LOAD SECTORS when Branch changes ---
+  useEffect(() => {
+    const updateSectors = async () => {
+      if (!selectedBranch) {
+        setAvailableSectors([]);
+        return;
+      }
+      const map = await SupabaseDB.getBranchDataMap();
+      const sectors = map[selectedBranch] || [];
+      setAvailableSectors(sectors.sort());
+    };
+    updateSectors();
+  }, [selectedBranch]);
+
   // --- FETCH MAIN METRICS ---
   const fetchMetrics = useCallback(async () => {
     setLoading(true);
     try {
       // We pass global filters
+      // Handle Date Filters: Default to "All Time" (from 2024) if cleared
+      const effectiveStartDate = dateStart || '2024-01-01';
+      const effectiveEndDate = dateEnd || todayString;
+
       const data = await SupabaseDB.getDashboardMetrics({
-        startDate: dateStart,
-        endDate: dateEnd,
+        startDate: effectiveStartDate,
+        endDate: effectiveEndDate,
         cluster: selectedCluster || undefined,
         branch: selectedBranch || undefined,
-        sector: selectedSector || undefined
+        sector: selectedSector || undefined,
+        supervisorId: selectedSupervisor || undefined
       });
+      console.log('Metrics Fetched:', data); // DEBUG LOG
 
       // Calculate Percentage locally if not in RPC (RPC returns total/treated/pending)
       const total = data.kpi.total || 0;
@@ -167,7 +209,7 @@ export const Dashboard: React.FC<DashboardProps> = () => {
     } finally {
       setLoading(false);
     }
-  }, [dateStart, dateEnd, selectedCluster, selectedBranch, selectedSector]);
+  }, [dateStart, dateEnd, selectedCluster, selectedBranch, selectedSector, selectedSupervisor]);
 
   useEffect(() => {
     fetchMetrics();
@@ -211,6 +253,42 @@ export const Dashboard: React.FC<DashboardProps> = () => {
   useEffect(() => {
     fetchParetoMetrics();
   }, [fetchParetoMetrics]);
+
+  // --- FETCH COMPARATIVE MATRIX ---
+  useEffect(() => {
+    const fetchComparative = async () => {
+      setComparativeLoading(true);
+      try {
+        // Handle Date Filters: Default to "All Time" (from 2024) if cleared
+        const effectiveStartDate = dateStart || '2024-01-01';
+        const effectiveEndDate = dateEnd || todayString;
+
+        const data = await SupabaseDB.getComparativeMatrix({
+          startDate: effectiveStartDate,
+          endDate: effectiveEndDate,
+          cluster: selectedCluster || undefined,
+          branch: selectedBranch || undefined,
+          sector: selectedSector || undefined,
+          supervisorId: selectedSupervisor || undefined,
+          groupBy: matrixGroupBy
+        });
+
+        // Transform for Recharts:
+        // Input: [{ name: 'Sup1', categories: { 'CatA': 10, 'CatB': 5 } }]
+        // Output: [{ name: 'Sup1', 'CatA': 10, 'CatB': 5 }]
+        const transformed = data.map((d: any) => ({
+          name: d.name,
+          ...d.categories
+        }));
+        setComparativeData(transformed);
+      } catch (e) {
+        console.error(e);
+      } finally {
+        setComparativeLoading(false);
+      }
+    };
+    fetchComparative();
+  }, [dateStart, dateEnd, selectedCluster, selectedBranch, selectedSector, selectedSupervisor, matrixGroupBy]);
 
   // --- FETCH RANKING ---
   useEffect(() => {
@@ -338,7 +416,7 @@ export const Dashboard: React.FC<DashboardProps> = () => {
                 placeholder="Todos os Clusters"
               />
             </div>
-            <div className="w-full md:w-48">
+            <div className="w-full md:w-32">
               <label className="block text-xs font-bold text-slate-500 mb-1 flex items-center gap-1">
                 <MapPin size={12} /> Filial
               </label>
@@ -346,10 +424,40 @@ export const Dashboard: React.FC<DashboardProps> = () => {
                 value={selectedBranch}
                 onChange={(val) => { setSelectedBranch(val); setSelectedSector(''); }}
                 options={[
-                  { label: 'Todas as Filiais', value: '' },
+                  { label: 'Todas', value: '' },
                   ...availableBranches.map(b => ({ label: b, value: b }))
                 ]}
-                placeholder="Todas as Filiais"
+                placeholder="Todas"
+              />
+            </div>
+            {/* Added: Sector Filter */}
+            <div className="w-full md:w-32">
+              <label className="block text-xs font-bold text-slate-500 mb-1 flex items-center gap-1">
+                <Grid size={12} /> Setor
+              </label>
+              <CustomSelect
+                value={selectedSector}
+                onChange={(val) => setSelectedSector(val)}
+                options={[
+                  { label: 'Todos', value: '' },
+                  ...availableSectors.map(s => ({ label: s, value: s }))
+                ]}
+                placeholder="Todos"
+              />
+            </div>
+            {/* Added: Supervisor Filter */}
+            <div className="w-full md:w-48">
+              <label className="block text-xs font-bold text-slate-500 mb-1 flex items-center gap-1">
+                <Users size={12} /> Supervisor
+              </label>
+              <CustomSelect
+                value={selectedSupervisor}
+                onChange={(val) => setSelectedSupervisor(val)}
+                options={[
+                  { label: 'Todos', value: '' },
+                  ...availableSupervisors.map(s => ({ label: s.name, value: s.id }))
+                ]}
+                placeholder="Todos"
               />
             </div>
           </div>
@@ -547,6 +655,89 @@ export const Dashboard: React.FC<DashboardProps> = () => {
           </div>
         </Card>
 
+        {/* --- NEW CHART: COMPARATIVE MATRIX (Dynamic) --- */}
+        <Card className="flex flex-col w-full overflow-visible">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 border-b border-slate-100 pb-4">
+            <div className="mb-2 sm:mb-0">
+              <h3 className="font-bold text-[#404040] text-lg flex items-center gap-2">
+                <BarChart2 size={20} className="text-[#940910]" />
+                Análise Comparativa de Ocorrências
+              </h3>
+            </div>
+            <div className="flex gap-2 bg-slate-100 p-1 rounded-lg">
+              <button
+                onClick={() => setMatrixGroupBy('SUPERVISOR')}
+                className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all ${matrixGroupBy === 'SUPERVISOR' ? 'bg-white text-[#940910] shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+              >
+                Por Supervisor
+              </button>
+              <button
+                onClick={() => setMatrixGroupBy('SECTOR')}
+                className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all ${matrixGroupBy === 'SECTOR' ? 'bg-white text-[#940910] shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+              >
+                Por Setor
+              </button>
+            </div>
+          </div>
+          <div className="w-full relative overflow-x-auto">
+            {comparativeLoading && <div className="p-10 text-center text-slate-500"><Loader2 className="animate-spin mb-2 mx-auto" /> Carregando comparativo...</div>}
+
+            {!comparativeLoading && comparativeData.length === 0 && (
+              <div className="p-10 text-center text-slate-400 text-sm">Nenhum dado encontrado para os filtros selecionados.</div>
+            )}
+
+            {!comparativeLoading && comparativeData.length > 0 && (() => {
+              // Calculate columns once
+              const dataKeys = Array.from(new Set(comparativeData.flatMap(d => Object.keys(d).filter(k => k !== 'name')))).sort();
+
+              return (
+                <table className="w-full text-sm text-left border-collapse">
+                  <thead>
+                    <tr className="bg-[#940910] text-white">
+                      <th className="p-3 border-r border-white/20 whitespace-nowrap sticky left-0 z-10 bg-[#940910] min-w-[200px]">
+                        {matrixGroupBy === 'SUPERVISOR' ? 'Supervisor' : 'Setor'}
+                      </th>
+                      {dataKeys.map(cat => (
+                        <th key={cat} className="p-3 text-center border-r border-white/20 whitespace-nowrap min-w-[100px] text-xs">
+                          {cat}
+                        </th>
+                      ))}
+                      <th className="p-3 text-center font-bold bg-[#F6B700] text-[#404040] min-w-[80px]">Total</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {comparativeData.map((row: any, idx) => {
+                      const rowTotal = dataKeys.reduce<number>((sum, key) => {
+                        const val = row[key as string];
+                        return sum + (typeof val === 'number' ? val : 0);
+                      }, 0);
+
+                      return (
+                        <tr key={idx} className="hover:bg-slate-50 bg-white text-[#404040] border-b border-slate-100">
+                          <td className="p-3 font-bold text-xs text-[#940910] sticky left-0 z-10 bg-white border-r border-slate-100">
+                            {row.name}
+                          </td>
+                          {dataKeys.map(cat => {
+                            const val = row[cat as string];
+                            return (
+                              <td key={cat} className={`p-3 text-center border-l border-slate-100 text-xs ${val ? 'font-bold text-[#940910] bg-red-50' : 'text-slate-300'}`}>
+                                {val || '-'}
+                              </td>
+                            );
+                          })}
+                          <td className="p-3 text-center font-bold bg-slate-50 border-l border-slate-200">
+                            {rowTotal}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              );
+            })()}
+          </div>
+        </Card>
+
         {/* --- CHART 5: RANKING TECHNICIANS --- */}
         <Card className="flex flex-col w-full overflow-visible">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 border-b border-slate-100 pb-4">
@@ -591,7 +782,7 @@ export const Dashboard: React.FC<DashboardProps> = () => {
           </div>
         </Card>
 
-      </div>
-    </div>
+      </div >
+    </div >
   );
 };

@@ -62,7 +62,8 @@ export const SupabaseDB = {
             avatar: p.avatar_url,
             allowedClusters: p.allowed_clusters || [],
             allowedBranches: p.allowed_branches || [],
-            teamMemberId: p.team_member_id // Return linked ID
+            teamMemberId: p.team_member_id, // Return linked ID
+            allowedSupervisors: p.allowed_supervisors || [] // Return linked supervisors
         }));
     },
 
@@ -78,7 +79,8 @@ export const SupabaseDB = {
             new_role: user.role,
             new_clusters: user.allowedClusters,
             new_branches: user.allowedBranches,
-            new_team_member_id: user.teamMemberId ?? null
+            new_team_member_id: user.teamMemberId ?? null,
+            new_allowed_supervisors: user.allowedSupervisors ?? []
         });
 
         if (error) throw error;
@@ -92,6 +94,18 @@ export const SupabaseDB = {
 
             if (avatarError) {
                 console.warn('Avatar update failed (RLS?):', avatarError);
+            }
+        }
+
+        // 3. Update Password (if provided) using RPC (Secure Admin Update)
+        if (user.password && user.password.length >= 6) {
+            const { error: pwdError } = await supabase.rpc('admin_update_user_password', {
+                target_user_id: user.id,
+                new_password: user.password
+            });
+            if (pwdError) {
+                console.error('Password update failed:', pwdError);
+                throw new Error('Erro ao atualizar senha: ' + pwdError.message);
             }
         }
     },
@@ -110,6 +124,7 @@ export const SupabaseDB = {
         allowedClusters: string[];
         allowedBranches: string[];
         teamMemberId?: string; // Add link ID
+        allowedSupervisors?: string[]; // Add new link list
     }): Promise<{ success: boolean; error?: string; userId?: string }> {
         try {
             // WORKAROUND: Client-side creation without logging out current admin
@@ -147,7 +162,8 @@ export const SupabaseDB = {
                 new_role: userData.role,
                 new_clusters: userData.allowedClusters,
                 new_branches: userData.allowedBranches,
-                new_team_member_id: userData.teamMemberId
+                new_team_member_id: userData.teamMemberId,
+                new_allowed_supervisors: userData.allowedSupervisors || []
             });
 
             if (rpcError) {
@@ -285,13 +301,14 @@ export const SupabaseDB = {
 
     // --- DASHBOARD ANALYTICS (RPC) ---
 
-    async getDashboardMetrics(filters: { startDate: string, endDate: string, cluster?: string, branch?: string, sector?: string }): Promise<any> {
+    async getDashboardMetrics(filters: { startDate: string, endDate: string, cluster?: string, branch?: string, sector?: string, supervisorId?: string }): Promise<any> {
         const { data, error } = await supabase.rpc('get_dashboard_metrics', {
             p_start_date: filters.startDate,
             p_end_date: filters.endDate,
             p_cluster: filters.cluster,
             p_branch: filters.branch,
-            p_sector: filters.sector
+            p_sector: filters.sector,
+            p_supervisor_id: filters.supervisorId
         });
 
         if (error) {
@@ -316,6 +333,40 @@ export const SupabaseDB = {
             return [];
         }
         return data;
+    },
+
+    async getComparativeMatrix(filters: { startDate: string, endDate: string, cluster?: string, branch?: string, sector?: string, supervisorId?: string, groupBy: 'SUPERVISOR' | 'SECTOR' }): Promise<any[]> {
+        const { data, error } = await supabase.rpc('get_comparative_matrix', {
+            p_start_date: filters.startDate,
+            p_end_date: filters.endDate,
+            p_cluster: filters.cluster,
+            p_branch: filters.branch,
+            p_sector: filters.sector,
+            p_supervisor_id: filters.supervisorId,
+            p_group_by: filters.groupBy
+        });
+
+        if (error) {
+            console.error("Error fetching comparative matrix:", error);
+            return [];
+        }
+        return data;
+    },
+
+    async getAllSupervisorsForFilter(): Promise<{ id: string, name: string }[]> {
+        // Fetch all supervisors (role based) for admin filters
+        // Using role-based query or just generic team fetch
+        const { data, error } = await supabase
+            .from('team_members')
+            .select('id, name')
+            .in('role', ['SUPERVISOR', 'COORDENADOR', 'GERENTE']) // Usually supervisors are the target logic
+            .order('name');
+
+        if (error) {
+            console.error("Error fetching supervisors list:", error);
+            return [];
+        }
+        return data || [];
     },
 
     async getTechnicianRanking(filters: { year?: string, month?: string, category?: string, reason?: string }): Promise<any[]> {
@@ -423,26 +474,56 @@ export const SupabaseDB = {
             }));
         }
 
-        // 2. Non-Admin: Fetch User Profile to get their "Control Code" (team_member_id)
+        // 2. Non-Admin: Fetch User Profile to get "Allowed Supervisors"
         const { data: profile, error: profileError } = await supabase
             .from('profiles')
-            .select('team_member_id')
+            .select('allowed_supervisors, team_member_id')
             .eq('id', currentUserId)
             .single();
 
-        if (profileError || !profile?.team_member_id) {
-            console.warn('User has no Linked Code (team_member_id). Returning empty list.', profileError);
+        if (profileError || (!profile?.allowed_supervisors && !profile?.team_member_id)) {
+            console.warn('User has no Linked Supervisors or Code. Returning empty list.', profileError);
             return [];
         }
 
-        // 3. Filter team members where technician's "Controlador Code" matches user's code
-        // The column in team_members is 'controlador_id' (which stores the 4-digit code)
-        const code = profile.team_member_id;
+        let query = supabase.from('team_members').select('*');
 
-        const { data, error } = await supabase
-            .from('team_members')
-            .select('*')
-            .or(`supervisor_id.eq.${code},coordenador_id.eq.${code},gerente_id.eq.${code},controlador_id.eq.${code}`);
+        // NEW LOGIC: Filter by Allowed Supervisors
+        if (profile.allowed_supervisors && profile.allowed_supervisors.length > 0) {
+            // Find team members where Supervisor ID is in the list
+            // OR where they ARE one of the supervisors (optional, but good for visibility)
+            // PostgREST array filtering "in" syntax: .in('supervisor_id', list)
+
+            // We want Technicians who report to these supervisors.
+            // Technicians have `supervisor_id`. 
+            // We also might want to see the hierarchy structure (Supervisor themselves).
+
+            // Construct filter: supervisor_id IN list OR id IN list (to see the supervisors too)
+            // Note: OR syntax with IN is tricky. 
+            // Simplified: Fetch logic
+
+            // Using "or" with postgrest:
+            const listStr = `(${profile.allowed_supervisors.map((id: string) => `"${id}"`).join(',')})`; // format for filter
+
+            // Actually, simplest is:
+            // Fetch all where specific supervisors match. 
+            // Issue: .in() works on single column. 
+            // Let's do a client side filter if list is small? No, safer to build query.
+
+            // Let's fetch where supervisor_id is in list.
+            query = query.in('supervisor_id', profile.allowed_supervisors);
+
+            // Note: This excludes the Supervisors themselves. If we need them, we need logical OR.
+            // Currently the table is flat list.
+        } else if (profile.team_member_id) {
+            // LEGACY FALLBACK
+            const code = profile.team_member_id;
+            query = query.or(`supervisor_id.eq.${code},coordenador_id.eq.${code},gerente_id.eq.${code},controlador_id.eq.${code}`);
+        } else {
+            return [];
+        }
+
+        const { data, error } = await query;
 
         if (error) {
             console.error('Error fetching team for user:', error);
@@ -878,7 +959,8 @@ export const SupabaseDB = {
                             new_role: role,
                             new_clusters: clusters,
                             new_branches: branches,
-                            new_team_member_id: teamMemberId
+                            new_team_member_id: teamMemberId,
+                            new_allowed_supervisors: [] // Import handling TODO: add column to CSV if needed, for now empty
                         });
                         // Note: Password update not supported via simple RPC, requires Admin Auth API.
                         if (error) throw error;

@@ -50,6 +50,7 @@ export interface User {
   allowedClusters?: string[];
   allowedBranches?: string[];
   teamMemberId?: string; // Links to details in TeamMembers table
+  allowedSupervisors?: string[]; // IDs of supervisors this user can see
 }
 
 export enum TeamMemberRole {
