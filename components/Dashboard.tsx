@@ -545,7 +545,7 @@ export const Dashboard: React.FC<DashboardProps> = () => {
       {/* --- STACKED CONTAINER --- */}
       <div className="flex flex-col gap-8">
         {/* --- CHART 1: OCCURRENCES BY TYPE --- */}
-        <Card title="Volume por Tipo de Ocorrência (Filtro Global)" className="flex flex-col w-full">
+        <Card title="Tipo de Ocorrência" className="flex flex-col w-full">
           <div className="h-[400px] w-full">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={metrics.category_counts} margin={{ top: 20, right: 30, left: 20, bottom: 100 }}>
