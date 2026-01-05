@@ -700,6 +700,15 @@ export const Dashboard: React.FC<DashboardProps> = () => {
               // Calculate columns once
               const dataKeys = Array.from(new Set(comparativeData.flatMap(d => Object.keys(d).filter(k => k !== 'name')))).sort();
 
+              // Calculate totals and sort input data descending by Total
+              const sortedRows = [...comparativeData].map(row => {
+                const total = dataKeys.reduce<number>((sum, key) => {
+                  const val = row[key as string];
+                  return sum + (typeof val === 'number' ? val : 0);
+                }, 0);
+                return { ...row, _total: total };
+              }).sort((a, b) => b._total - a._total);
+
               return (
                 <table className="w-full text-sm text-left border-collapse">
                   <thead>
@@ -716,12 +725,7 @@ export const Dashboard: React.FC<DashboardProps> = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {comparativeData.map((row: any, idx) => {
-                      const rowTotal = dataKeys.reduce<number>((sum, key) => {
-                        const val = row[key as string];
-                        return sum + (typeof val === 'number' ? val : 0);
-                      }, 0);
-
+                    {sortedRows.map((row: any, idx) => {
                       return (
                         <tr key={idx} className="hover:bg-slate-50 bg-white text-[#404040] border-b border-slate-100">
                           <td className="p-3 font-bold text-xs text-[#940910] sticky left-0 z-10 bg-white border-r border-slate-100">
@@ -736,7 +740,7 @@ export const Dashboard: React.FC<DashboardProps> = () => {
                             );
                           })}
                           <td className="p-3 text-center font-bold bg-slate-50 border-l border-slate-200">
-                            {rowTotal}
+                            {row._total}
                           </td>
                         </tr>
                       );
