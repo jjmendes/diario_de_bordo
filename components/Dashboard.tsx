@@ -708,7 +708,7 @@ export const Dashboard: React.FC<DashboardProps> = () => {
                         {matrixGroupBy === 'SUPERVISOR' ? 'Supervisor' : 'Setor'}
                       </th>
                       {dataKeys.map(cat => (
-                        <th key={cat} className="p-3 text-center border-r border-white/20 whitespace-nowrap min-w-[100px] text-xs">
+                        <th key={cat} className="p-2 text-center border-r border-white/20 min-w-[80px] max-w-[120px] text-[10px] leading-tight align-middle break-words">
                           {cat}
                         </th>
                       ))}
