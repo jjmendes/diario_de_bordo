@@ -222,9 +222,13 @@ export const Dashboard: React.FC<DashboardProps> = () => {
       const pCluster = paretoFilters.cluster || selectedCluster;
       const pBranch = paretoFilters.branch || selectedBranch;
 
+      // Handle Date Filters: Default to "All Time" (from 2024) if cleared
+      const effectiveStartDate = dateStart || '2024-01-01';
+      const effectiveEndDate = dateEnd || todayString;
+
       const rawData = await SupabaseDB.getParetoChartData({
-        startDate: dateStart,
-        endDate: dateEnd,
+        startDate: effectiveStartDate,
+        endDate: effectiveEndDate,
         cluster: pCluster || undefined,
         branch: pBranch || undefined,
         category: paretoFilters.category || undefined
