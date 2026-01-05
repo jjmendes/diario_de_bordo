@@ -163,9 +163,64 @@ export const OccurrenceList: React.FC<OccurrenceListProps> = ({ users = [], curr
 
   const handleAction = async (id: string, action: 'COMPLETE' | 'CANCEL') => {
     const newStatus = action === 'COMPLETE' ? OccurrenceStatus.CONCLUIDA : OccurrenceStatus.CANCELADA;
-    await onUpdateStatus(id, newStatus);
-    // Optimistic update
+    const occ = occurrences.find(o => o.id === id);
+    if (!occ) return;
+
+    // Optimistic Update
     setOccurrences(prev => prev.map(o => o.id === id ? { ...o, status: newStatus } : o));
+
+    // Save to DB
+    try {
+      const updatedOcc = {
+        ...occ,
+        status: newStatus,
+        auditTrail: [
+          ...occ.auditTrail,
+          {
+            id: `aud_${Date.now()}`,
+            date: new Date().toISOString(),
+            action: newStatus,
+            user: currentUser.name,
+            details: `Status alterado para ${newStatus}`
+          }
+        ]
+      };
+      await SupabaseDB.saveOccurrence(updatedOcc);
+    } catch (error) {
+      console.error("Failed to update status", error);
+      alert("Erro ao salvar status. Tente recarregar a página.");
+      fetchData(false); // Revert
+    }
+  };
+
+  const handleEscalationChange = async (id: string, newLevel: EscalationLevel) => {
+    const occ = occurrences.find(o => o.id === id);
+    if (!occ || occ.escalationLevel === newLevel) return;
+
+    // Optimistic
+    setOccurrences(prev => prev.map(o => o.id === id ? { ...o, escalationLevel: newLevel } : o));
+
+    try {
+      const updatedOcc = {
+        ...occ,
+        escalationLevel: newLevel,
+        auditTrail: [
+          ...occ.auditTrail,
+          {
+            id: `aud_${Date.now()}`,
+            date: new Date().toISOString(),
+            action: 'ESCALONAMENTO',
+            user: currentUser.name,
+            details: `Recorrência alterada para ${newLevel}`
+          }
+        ]
+      };
+      await SupabaseDB.saveOccurrence(updatedOcc);
+    } catch (error) {
+      console.error("Failed to update escalation", error);
+      alert("Erro ao salvar recorrência.");
+      fetchData(false);
+    }
   };
 
   const updateFilter = (field: keyof typeof filters, value: string) => {
@@ -578,7 +633,7 @@ export const OccurrenceList: React.FC<OccurrenceListProps> = ({ users = [], curr
                         <select
                           className={`bg-transparent border-none text-[9px] font-bold p-0 focus:ring-0 outline-none rounded transition-colors w-full truncate ${canEdit ? 'text-[#940910] cursor-pointer hover:bg-red-50' : 'text-slate-400 cursor-not-allowed'}`}
                           value={o.escalationLevel || EscalationLevel.NONE}
-                          onChange={(e) => onUpdateEscalation(o.id, e.target.value as EscalationLevel)}
+                          onChange={(e) => handleEscalationChange(o.id, e.target.value as EscalationLevel)}
                           disabled={!canEdit}
                         >
                           {Object.values(EscalationLevel).map(lvl => (
