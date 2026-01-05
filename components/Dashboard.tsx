@@ -180,7 +180,6 @@ export const Dashboard: React.FC<DashboardProps> = () => {
         sector: selectedSector || undefined,
         supervisorId: selectedSupervisor || undefined
       });
-      console.log('Metrics Fetched:', data); // DEBUG LOG
 
       // Calculate Percentage locally if not in RPC (RPC returns total/treated/pending)
       const total = data.kpi.total || 0;
