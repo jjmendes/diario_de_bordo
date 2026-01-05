@@ -629,7 +629,14 @@ export const Dashboard: React.FC<DashboardProps> = () => {
         </Card>
 
         {/* --- CHART 3: ESCALATION MATRIX TABLE --- */}
-        <Card title="Matriz de Escalonamento por Ocorrência" className="w-full overflow-visible">
+        {/* --- CHART 3: ESCALATION MATRIX TABLE --- */}
+        <Card className="w-full overflow-visible">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 border-b border-slate-100 pb-4">
+            <h3 className="font-bold text-[#404040] text-lg flex items-center gap-2">
+              <Grid size={20} className="text-[#940910]" />
+              Matriz de Escalonamento por Ocorrência
+            </h3>
+          </div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm text-left border-collapse">
               <thead>
