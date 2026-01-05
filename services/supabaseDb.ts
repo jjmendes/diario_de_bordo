@@ -408,7 +408,7 @@ export const SupabaseDB = {
             const { error } = await supabase.from('occurrences').insert(dbPayload);
             if (error) throw error;
         } else {
-            const { error } = await supabase.from('occurrences').upsert(dbPayload);
+            const { error } = await supabase.from('occurrences').update(dbPayload).eq('id', id);
             if (error) throw error;
         }
     },
