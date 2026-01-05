@@ -193,6 +193,9 @@ export const SupabaseDB = {
             search?: string;
             technicianId?: string; // Explicit technician filter
             registeredBy?: string; // Filter by creator
+            category?: string;
+            reason?: string;
+            escalationLevel?: string;
         },
         page: number = 0,
         pageSize: number = 50,
@@ -211,34 +214,15 @@ export const SupabaseDB = {
         // ... filters ...
 
         // (Skipping filters setup lines for brevity in replacement if possible, but replace_file_content needs contiguous)
-        // Actually, I can replace just the select part if I am careful with lines.
-        // But I also need to replace the mapping part which is further down.
-        // I will do 2 Replace calls.
-
+        // actually, I need to match the previous structure roughly to be safe with context
 
         // --- HIERARCHY PERMISSION FILTER ---
         if (viewingUser && viewingUser.role !== 'ADMIN') {
-            // Logic: Users see occurrences where technician_id is in their "subordinates list"
-            // OR where they are the technician (if they are a technician).
-            // OR if they are CONTROLADOR, do they see all? Assuming Controller sees all for simplicity explicitly unless restricted.
-            // Assumption: Role 'CONTROLADOR' sees all? Or limited to Cluster? 
-            // Current code in AdminPanel passes 'allowedClusters' to users. 
-            // If viewingUser has allowedClusters, filter by cluster.
-
-            // 1. Filter by Assigned Clusters (if any)
-            // We need to fetch user profile to get allowed_clusters if not passed? 
-            // Assuming 'viewingUser' passed here is generic, might usually fetch allowed_clusters.
-            // But let's verify Hierarchy.
-
-            // If Role is SUPERVISOR, COORDENADOR, GERENTE:
             if (['SUPERVISOR', 'COORDENADOR', 'GERENTE'].includes(viewingUser.role)) {
                 const subIds = await this.getSubordinateIds(viewingUser.id);
-                // Include self as well? Usually yes.
                 subIds.push(viewingUser.id);
                 query = query.in('technician_id', subIds);
             }
-            // Controladores usually filtered by Cluster/Branch via `filters` which are set by UI based on profile.
-            // If filters.cluster is set, it handles it.
         }
 
         // Apply filters
@@ -248,7 +232,12 @@ export const SupabaseDB = {
         if (filters?.status && filters.status !== 'ALL') query = query.eq('status', filters.status);
         if (filters?.cluster && filters.cluster !== 'ALL') query = query.eq('cluster', filters.cluster);
         if (filters?.branch && filters.branch !== 'ALL') query = query.eq('branch', filters.branch);
-        if (filters?.technicianId) query = query.eq('technician_id', filters.technicianId); // Specific filter
+        if (filters?.technicianId) query = query.eq('technician_id', filters.technicianId);
+
+        // NEW FILTERS
+        if (filters?.category && filters.category !== 'ALL') query = query.eq('category', filters.category);
+        if (filters?.reason && filters.reason !== 'ALL') query = query.eq('reason', filters.reason);
+        if (filters?.escalationLevel && filters.escalationLevel !== 'ALL') query = query.eq('escalation_level', filters.escalationLevel);
 
         if (filters?.search) {
             // Simplified search on specific text columns

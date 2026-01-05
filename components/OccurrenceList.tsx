@@ -107,8 +107,13 @@ export const OccurrenceList: React.FC<OccurrenceListProps> = ({ users = [], curr
       branch: filters.branch,
       search: debouncedSearch,
 
-      technicianId: filters.technician, // Added support for technician filter
-      registeredBy: filters.registeredBy
+      technicianId: filters.technician,
+      registeredBy: filters.registeredBy,
+
+      // New precise filters:
+      category: filters.category,
+      reason: filters.reason,
+      escalationLevel: filters.escalation
     };
 
     // Pass currentUser to enable backend hierarchy filtering
@@ -219,7 +224,12 @@ export const OccurrenceList: React.FC<OccurrenceListProps> = ({ users = [], curr
         status: filters.status,
         cluster: filters.cluster,
         branch: filters.branch,
-        search: [filters.category, filters.reason, filters.technician, debouncedSearch].filter(Boolean).join(' ')
+        search: debouncedSearch,
+        technicianId: filters.technician,
+        registeredBy: filters.registeredBy,
+        category: filters.category,
+        reason: filters.reason,
+        escalationLevel: filters.escalation
       };
 
       const { data: allData } = await SupabaseDB.getOccurrences(backendFilters, 0, 5000);
