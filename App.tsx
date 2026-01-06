@@ -273,8 +273,17 @@ const AppContent = () => {
             </div>
 
             {selectedOccurrence.escalationLevel && selectedOccurrence.escalationLevel !== EscalationLevel.NONE && (
-              <div className="bg-[#F6B700]/10 p-3 rounded-lg text-[#940910] text-sm font-bold border border-[#F6B700]/30 flex items-center gap-2 shadow-sm">
-                ⚠️ Recorrência Ativa: <span className="underline">{selectedOccurrence.escalationLevel}</span>
+              <div className="bg-[#F6B700]/10 p-3 rounded-lg text-[#940910] text-sm font-bold border border-[#F6B700]/30 flex flex-col gap-1 shadow-sm">
+                <div className="flex items-center gap-2">
+                  ⚠️ Recorrência Ativa: <span className="underline">{selectedOccurrence.escalationLevel}</span>
+                </div>
+                {(() => {
+                  const lastEscalation = [...(selectedOccurrence.auditTrail || [])].reverse().find(a => a.action === 'ESCALONAMENTO');
+                  if (lastEscalation) {
+                    return <span className="text-[10px] text-[#940910]/70 font-normal">Alterado em: {new Date(lastEscalation.date).toLocaleString()} por {lastEscalation.user}</span>;
+                  }
+                  return null;
+                })()}
               </div>
             )}
 

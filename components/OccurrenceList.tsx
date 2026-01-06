@@ -166,24 +166,27 @@ export const OccurrenceList: React.FC<OccurrenceListProps> = ({ users = [], curr
     const occ = occurrences.find(o => o.id === id);
     if (!occ) return;
 
+    const newLog = {
+      id: `aud_${Date.now()}`,
+      date: new Date().toISOString(),
+      action: newStatus,
+      user: currentUser.name,
+      details: `Status alterado para ${newStatus}`
+    };
+
     // Optimistic Update
-    setOccurrences(prev => prev.map(o => o.id === id ? { ...o, status: newStatus } : o));
+    setOccurrences(prev => prev.map(o => o.id === id ? {
+      ...o,
+      status: newStatus,
+      auditTrail: [...o.auditTrail, newLog]
+    } : o));
 
     // Save to DB
     try {
       const updatedOcc = {
         ...occ,
         status: newStatus,
-        auditTrail: [
-          ...occ.auditTrail,
-          {
-            id: `aud_${Date.now()}`,
-            date: new Date().toISOString(),
-            action: newStatus,
-            user: currentUser.name,
-            details: `Status alterado para ${newStatus}`
-          }
-        ]
+        auditTrail: [...occ.auditTrail, newLog]
       };
       await SupabaseDB.saveOccurrence(updatedOcc);
     } catch (error) {
@@ -197,23 +200,26 @@ export const OccurrenceList: React.FC<OccurrenceListProps> = ({ users = [], curr
     const occ = occurrences.find(o => o.id === id);
     if (!occ || occ.escalationLevel === newLevel) return;
 
+    const newLog = {
+      id: `aud_${Date.now()}`,
+      date: new Date().toISOString(),
+      action: 'ESCALONAMENTO',
+      user: currentUser.name,
+      details: `Recorrência alterada para ${newLevel}`
+    };
+
     // Optimistic
-    setOccurrences(prev => prev.map(o => o.id === id ? { ...o, escalationLevel: newLevel } : o));
+    setOccurrences(prev => prev.map(o => o.id === id ? {
+      ...o,
+      escalationLevel: newLevel,
+      auditTrail: [...o.auditTrail, newLog]
+    } : o));
 
     try {
       const updatedOcc = {
         ...occ,
         escalationLevel: newLevel,
-        auditTrail: [
-          ...occ.auditTrail,
-          {
-            id: `aud_${Date.now()}`,
-            date: new Date().toISOString(),
-            action: 'ESCALONAMENTO',
-            user: currentUser.name,
-            details: `Recorrência alterada para ${newLevel}`
-          }
-        ]
+        auditTrail: [...occ.auditTrail, newLog]
       };
       await SupabaseDB.saveOccurrence(updatedOcc);
     } catch (error) {
@@ -294,10 +300,14 @@ export const OccurrenceList: React.FC<OccurrenceListProps> = ({ users = [], curr
         return;
       }
 
-      const header = "ID;Data;Hora;Técnico;Cluster;Filial;Setor;Categoria;Motivo;Descrição;Status;Recorrência;Feedback\n";
-      const rows = allData.map(o =>
-        `${o.id};${o.date};${o.time};${o.userName};${o.cluster || ''};${o.branch || ''};${o.sector || ''};${o.category};${o.reason};"${(o.description || '').replace(/"/g, '""')}";${o.status};${o.escalationLevel || ''};"${(o.feedback || '').replace(/"/g, '""')}"`
-      ).join('\n');
+      const header = "ID;Data;Hora;Técnico;Cluster;Filial;Setor;Categoria;Motivo;Descrição;Status;Recorrência;Data_Recorrencia;Feedback;Historico_Auditoria\n";
+      const rows = allData.map(o => {
+        const auditString = o.auditTrail?.map(a => `[${new Date(a.date).toLocaleString()}] ${a.user}: ${a.details}`).join(' | ') || '';
+        const lastEscalation = [...(o.auditTrail || [])].reverse().find(a => a.action === 'ESCALONAMENTO');
+        const escalationDate = lastEscalation ? new Date(lastEscalation.date).toLocaleString() : '';
+
+        return `${o.id};${o.date};${o.time};${o.userName};${o.cluster || ''};${o.branch || ''};${o.sector || ''};${o.category};${o.reason};"${(o.description || '').replace(/"/g, '""')}";${o.status};${o.escalationLevel || ''};"${escalationDate}";"${(o.feedback || '').replace(/"/g, '""')}";"${auditString.replace(/"/g, '""')}"`;
+      }).join('\n');
 
       const blob = new Blob([`\uFEFF${header}${rows}`], { type: 'text/csv;charset=utf-8;' });
       const link = document.createElement('a');
@@ -601,7 +611,7 @@ export const OccurrenceList: React.FC<OccurrenceListProps> = ({ users = [], curr
             <tbody className="divide-y divide-slate-200">
 
               {occurrences.map(o => {
-                const canEdit = o.status !== OccurrenceStatus.CONCLUIDA && o.status !== OccurrenceStatus.CANCELADA;
+                const canEdit = (o.status !== OccurrenceStatus.CONCLUIDA && o.status !== OccurrenceStatus.CANCELADA) || currentUser.role === UserRole.ADMIN;
                 return (
                   <tr key={o.id} className="hover:bg-slate-50 transition-colors">
                     <td className="px-1.5 py-2">
