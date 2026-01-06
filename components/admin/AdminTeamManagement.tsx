@@ -51,7 +51,6 @@ export const AdminTeamManagement: React.FC<AdminTeamManagementProps> = ({
     const [newTeamSupervisor, setNewTeamSupervisor] = useState('');
     const [newTeamCoordenador, setNewTeamCoordenador] = useState('');
     const [newTeamGerente, setNewTeamGerente] = useState('');
-    const [newTeamControlador, setNewTeamControlador] = useState('');
     const [newTeamCluster, setNewTeamCluster] = useState('');
     const [newTeamFilial, setNewTeamFilial] = useState('');
     const [newTeamSegment, setNewTeamSegment] = useState<'BA' | 'TT' | ''>('');
@@ -188,7 +187,7 @@ export const AdminTeamManagement: React.FC<AdminTeamManagementProps> = ({
                 coordenadorId: formType === 'TECNICO' ? (newTeamCoordenador || undefined) : undefined,
                 gerenteId: formType === 'TECNICO' ? (newTeamGerente || undefined) : undefined,
                 reportsToId: formType === 'GESTOR' ? (newTeamReportsTo || undefined) : undefined,
-                controladorId: newTeamControlador || undefined,
+                controladorId: undefined,
                 cluster: newTeamCluster || undefined,
                 filial: newTeamFilial || undefined,
                 segment: formType === 'TECNICO' ? (newTeamSegment || undefined) : undefined
@@ -216,7 +215,6 @@ export const AdminTeamManagement: React.FC<AdminTeamManagementProps> = ({
         setNewTeamSupervisor(member.supervisorId || '');
         setNewTeamCoordenador(member.coordenadorId || '');
         setNewTeamGerente(member.gerenteId || '');
-        setNewTeamControlador(member.controladorId || '');
         setNewTeamCluster(member.cluster || '');
         setNewTeamFilial(member.filial || '');
         setNewTeamSegment(member.segment || '');
@@ -247,7 +245,6 @@ export const AdminTeamManagement: React.FC<AdminTeamManagementProps> = ({
         setNewTeamSupervisor('');
         setNewTeamCoordenador('');
         setNewTeamGerente('');
-        setNewTeamControlador('');
         setNewTeamCluster('');
         setNewTeamFilial('');
         setNewTeamSegment('');
@@ -269,14 +266,14 @@ export const AdminTeamManagement: React.FC<AdminTeamManagementProps> = ({
 
     // Exports
     const handleExportTeam = () => {
-        const header = "ID;Nome;Supervisor;Coordenador;Gerente;Controlador;Cluster;Filial;Segmento;Status\n";
+        const header = "ID;Nome;Supervisor;Coordenador;Gerente;Cluster;Filial;Segmento;Status\n";
         const rows = teamMembers
             .filter(m => m.role === TeamMemberRole.TECNICO)
             .map(m => {
                 const supervisorName = m.supervisorId ? teamMembers.find(tm => tm.id === m.supervisorId)?.name || '' : '';
                 const coordenadorName = m.coordenadorId ? teamMembers.find(tm => tm.id === m.coordenadorId)?.name || '' : '';
                 const gerenteName = m.gerenteId ? teamMembers.find(tm => tm.id === m.gerenteId)?.name || '' : '';
-                return `${m.id};${m.name};${supervisorName};${coordenadorName};${gerenteName};${m.controladorId || ''};${m.cluster || ''};${m.filial || ''};${m.segment || ''};${m.active ? 'Ativo' : 'Inativo'}`;
+                return `${m.id};${m.name};${supervisorName};${coordenadorName};${gerenteName};${m.cluster || ''};${m.filial || ''};${m.segment || ''};${m.active ? 'Ativo' : 'Inativo'}`;
             }).join("\n");
         downloadCSV(`base_tecnicos_${new Date().toISOString().split('T')[0]}.csv`, header + rows);
     };
@@ -294,8 +291,8 @@ export const AdminTeamManagement: React.FC<AdminTeamManagementProps> = ({
 
     const handleDownloadTemplate = () => {
         if (mode === 'TEAM') {
-            const header = "ID;Nome;Supervisor;Coordenador;Gerente;Controlador;Cluster;Filial;Segmento\n";
-            const example = "T001;João Silva;Fernando Lima;Roberto Santos;Carlos Silva;C001;SALVADOR;SALVADOR;BA";
+            const header = "ID;Nome;Supervisor;Coordenador;Gerente;Cluster;Filial;Segmento\n";
+            const example = "T001;João Silva;Fernando Lima;Roberto Santos;Carlos Silva;SALVADOR;SALVADOR;BA";
             downloadCSV("modelo_importacao_tecnicos.csv", header + example);
         } else {
             const header = "ID;Nome;Cargo;Superior Imediato;Cluster;Filial\n";
@@ -644,7 +641,7 @@ export const AdminTeamManagement: React.FC<AdminTeamManagementProps> = ({
                                         <th className="px-3 py-3 border-r border-white/20 whitespace-nowrap w-32 text-center">Supervisor</th>
                                         <th className="px-3 py-3 border-r border-white/20 whitespace-nowrap w-32 text-center">Coordenador</th>
                                         <th className="px-3 py-3 border-r border-white/20 whitespace-nowrap w-32 text-center">Gerente</th>
-                                        <th className="px-3 py-3 border-r border-white/20 whitespace-nowrap w-32 text-center">Controlador</th>
+
                                         <th className="px-3 py-3 border-r border-white/20 whitespace-nowrap text-center">Cluster</th>
                                         <th className="px-3 py-3 border-r border-white/20 whitespace-nowrap text-center">Filial</th>
                                         <th className="px-3 py-3 border-r border-white/20 whitespace-nowrap text-center">Segmento</th>
@@ -688,9 +685,6 @@ export const AdminTeamManagement: React.FC<AdminTeamManagementProps> = ({
                                             </td>
                                             <td className="px-3 py-2 text-[10px] uppercase leading-tight max-w-[112px]" title={getMemberName(member.gerenteId)}>
                                                 {member.gerenteId ? getMemberName(member.gerenteId) : '-'}
-                                            </td>
-                                            <td className="px-3 py-2 text-[10px] uppercase leading-tight max-w-[112px]" title={getMemberName(member.controladorId)}>
-                                                {member.controladorId ? getMemberName(member.controladorId) : '-'}
                                             </td>
                                             <td className="px-3 py-2 text-[10px] uppercase">{member.cluster || '-'}</td>
                                             <td className="px-3 py-2 text-[10px] uppercase">{member.filial || '-'}</td>
