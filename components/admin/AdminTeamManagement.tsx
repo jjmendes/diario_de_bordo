@@ -563,55 +563,54 @@ export const AdminTeamManagement: React.FC<AdminTeamManagementProps> = ({
 
                     {/* Filters for Team (Technicians) */}
                     {mode === 'TEAM' && (
-                        { mode === 'TEAM' && (
-                            <div className="flex flex-wrap gap-2 flex-1 mx-4">
-                                <div className="min-w-[140px] flex-1">
-                                    <CustomSelect
-                                        value={teamGerenteFilter}
-                                        onChange={setTeamGerenteFilter}
-                                        options={[{ label: 'Gerente', value: '' }, ...managers.map(m => ({ label: m.name.split(' ').slice(0, 2).join(' '), value: m.id }))]}
-                                        placeholder="Gerente"
-                                        className="h-9 w-full"
-                                    />
-                                </div>
-                                <div className="min-w-[140px] flex-1">
-                                    <CustomSelect
-                                        value={teamCoordenadorFilter}
-                                        onChange={setTeamCoordenadorFilter}
-                                        options={[{ label: 'Coord.', value: '' }, ...coordinators.map(c => ({ label: c.name.split(' ').slice(0, 2).join(' '), value: c.id }))]}
-                                        placeholder="Coord."
-                                        className="h-9 w-full"
-                                    />
-                                </div>
-                                <div className="min-w-[140px] flex-1">
-                                    <CustomSelect
-                                        value={teamSupervisorFilter}
-                                        onChange={setTeamSupervisorFilter}
-                                        options={[{ label: 'Sup.', value: '' }, ...supervisors.map(s => ({ label: s.name.split(' ').slice(0, 2).join(' '), value: s.id }))]}
-                                        placeholder="Supervisor"
-                                        className="h-9 w-full"
-                                    />
-                                </div>
-                                <div className="min-w-[100px]">
-                                    <CustomSelect
-                                        value={teamClusterFilter}
-                                        onChange={(val) => { setTeamClusterFilter(val); setTeamBranchFilter(''); }}
-                                        options={[{ label: 'Cluster', value: '' }, ...uniqueClusters.map(c => ({ label: c, value: c }))]}
-                                        placeholder="Cluster"
-                                        className="h-9 w-full"
-                                    />
-                                </div>
-                                <div className="min-w-[100px]">
-                                    <CustomSelect
-                                        value={teamBranchFilter}
-                                        onChange={setTeamBranchFilter}
-                                        options={[{ label: 'Filial', value: '' }, ...Array.from(new Set(data.filter(m => !teamClusterFilter || m.cluster === teamClusterFilter).map(m => m.filial).filter(Boolean))).sort().map(b => ({ label: b, value: b }))]}
-                                        placeholder="Filial"
-                                        className="h-9 w-full"
-                                    />
-                                </div>
+                        <div className="flex flex-wrap gap-2 flex-1 mx-4">
+                            <div className="min-w-[140px] flex-1">
+                                <CustomSelect
+                                    value={teamGerenteFilter}
+                                    onChange={setTeamGerenteFilter}
+                                    options={[{ label: 'Gerente', value: '' }, ...managers.map(m => ({ label: m.name.split(' ').slice(0, 2).join(' '), value: m.id }))]}
+                                    placeholder="Gerente"
+                                    className="h-9 w-full"
+                                />
                             </div>
-                        )}
+                            <div className="min-w-[140px] flex-1">
+                                <CustomSelect
+                                    value={teamCoordenadorFilter}
+                                    onChange={setTeamCoordenadorFilter}
+                                    options={[{ label: 'Coord.', value: '' }, ...coordinators.map(c => ({ label: c.name.split(' ').slice(0, 2).join(' '), value: c.id }))]}
+                                    placeholder="Coord."
+                                    className="h-9 w-full"
+                                />
+                            </div>
+                            <div className="min-w-[140px] flex-1">
+                                <CustomSelect
+                                    value={teamSupervisorFilter}
+                                    onChange={setTeamSupervisorFilter}
+                                    options={[{ label: 'Sup.', value: '' }, ...supervisors.map(s => ({ label: s.name.split(' ').slice(0, 2).join(' '), value: s.id }))]}
+                                    placeholder="Supervisor"
+                                    className="h-9 w-full"
+                                />
+                            </div>
+                            <div className="min-w-[100px]">
+                                <CustomSelect
+                                    value={teamClusterFilter}
+                                    onChange={(val) => { setTeamClusterFilter(val); setTeamBranchFilter(''); }}
+                                    options={[{ label: 'Cluster', value: '' }, ...uniqueClusters.map(c => ({ label: c, value: c }))]}
+                                    placeholder="Cluster"
+                                    className="h-9 w-full"
+                                />
+                            </div>
+                            <div className="min-w-[100px]">
+                                <CustomSelect
+                                    value={teamBranchFilter}
+                                    onChange={setTeamBranchFilter}
+                                    options={[{ label: 'Filial', value: '' }, ...Array.from(new Set(data.filter(m => !teamClusterFilter || m.cluster === teamClusterFilter).map(m => m.filial).filter(Boolean))).sort().map(b => ({ label: b, value: b }))]}
+                                    placeholder="Filial"
+                                    className="h-9 w-full"
+                                />
+                            </div>
+                        </div>
+                    )}
                     <div className="flex items-center gap-3">
                         <div className="relative">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
