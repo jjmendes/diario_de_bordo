@@ -485,10 +485,7 @@ export const AdminTeamManagement: React.FC<AdminTeamManagementProps> = ({
                             {/* ONLY SHOW LAST ROW FOR TECHNICIANS now, since Gestores are handled above */}
                             {formType === 'TECNICO' && (
                                 <>
-                                    <div>
-                                        <label className="block text-xs font-bold mb-1 text-[#404040]">Controlador/Despacho</label>
-                                        <input className="w-full border rounded p-2 text-sm bg-white" value={newTeamControlador} onChange={e => setNewTeamControlador(e.target.value)} placeholder="Opcional" />
-                                    </div>
+
                                     <div>
                                         <label className="block text-xs font-bold mb-1 text-[#404040]">Cluster (Região)</label>
                                         <select className="w-full border rounded p-2 text-sm bg-white" value={newTeamCluster} onChange={e => setNewTeamCluster(e.target.value)}>
