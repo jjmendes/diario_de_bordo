@@ -229,6 +229,21 @@ export const OccurrenceList: React.FC<OccurrenceListProps> = ({ users = [], curr
     }
   };
 
+  const handleDelete = async (id: string) => {
+    if (!window.confirm("Tem certeza que deseja excluir permanentemente esta ocorrência?")) return;
+
+    // Optimistic Update
+    setOccurrences(prev => prev.filter(o => o.id !== id));
+
+    try {
+      await SupabaseDB.deleteOccurrence(id);
+    } catch (error) {
+      console.error("Delete failed", error);
+      alert("Erro ao excluir. Recarregando dados.");
+      fetchData(false);
+    }
+  };
+
   const updateFilter = (field: keyof typeof filters, value: string) => {
     setFilters(prev => ({ ...prev, [field]: value }));
   };
@@ -673,7 +688,7 @@ export const OccurrenceList: React.FC<OccurrenceListProps> = ({ users = [], curr
                             </button>
                           </>
                         )}
-                        <button onClick={(e) => { e.stopPropagation(); onDelete(o.id); }} className="p-1 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded" title="Excluir">
+                        <button onClick={(e) => { e.stopPropagation(); handleDelete(o.id); }} className="p-1 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded" title="Excluir">
                           <Trash2 size={12} />
                         </button>
                       </div>
