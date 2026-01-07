@@ -95,7 +95,9 @@ export const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
 
         const isPasswordValid = editingUserOriginalId ? true : !!newUserProps.password;
 
-        if (newUserProps.name && newUserProps.id && newUserProps.email && isPasswordValid) {
+        const isIdValid = editingUserOriginalId ? !!newUserProps.id : true;
+
+        if (newUserProps.name && isIdValid && newUserProps.email && isPasswordValid) {
             setInternalLoading(true);
 
             if (editingUserOriginalId) {
