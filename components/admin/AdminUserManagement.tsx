@@ -334,6 +334,7 @@ export const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
                                     <select className="w-full border rounded p-2 text-sm bg-white" value={newUserProps.role} onChange={e => setNewUserProps({ ...newUserProps, role: e.target.value as UserRole })}>
                                         <option value={UserRole.CONTROLADOR}>Operador</option>
                                         <option value={UserRole.ADMIN}>Admin</option>
+                                        <option value={UserRole.GESTOR}>Gestor</option>
                                     </select>
                                 </div>
                             </div>

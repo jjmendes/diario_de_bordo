@@ -1,7 +1,8 @@
 
 export enum UserRole {
   CONTROLADOR = 'CONTROLADOR',
-  ADMIN = 'ADMIN'
+  ADMIN = 'ADMIN',
+  GESTOR = 'GESTOR'
 }
 
 export enum OccurrenceStatus {

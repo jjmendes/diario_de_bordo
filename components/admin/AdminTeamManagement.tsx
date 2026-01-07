@@ -644,7 +644,67 @@ export const AdminTeamManagement: React.FC<AdminTeamManagementProps> = ({
                     </div>
                 </div>
 
-                <div className="overflow-x-auto max-h-[600px]">
+                {/* --- MOBILE CARDS (Visible only on mobile) --- */}
+                <div className="block md:hidden space-y-3 mb-4">
+                    {filteredData.map(member => (
+                        <div key={member.id} className="bg-white p-4 rounded-lg shadow-sm border border-slate-200">
+                            {/* Header: Name & Role/ID */}
+                            <div className="flex justify-between items-start mb-2 border-b border-slate-50 pb-2">
+                                <div>
+                                    <div className="font-bold text-[#404040]">{member.name}</div>
+                                    <div className="text-[10px] text-slate-500 font-mono">
+                                        {mode === 'TEAM' ? `ID: ${member.id}` : member.role}
+                                    </div>
+                                </div>
+                                <div className="text-[10px] bg-slate-100 px-2 py-1 rounded font-bold text-slate-600">
+                                    {member.filial || member.cluster || '-'}
+                                </div>
+                            </div>
+
+                            {/* Body: Details */}
+                            <div className="text-xs space-y-1 mb-3">
+                                {mode === 'TEAM' ? (
+                                    <>
+                                        <div className="grid grid-cols-2 gap-2">
+                                            <div>
+                                                <span className="text-[10px] text-slate-400 block">Supervisor</span>
+                                                <span className="font-medium">{member.supervisorId ? getMemberName(member.supervisorId).split(' ')[0] : '-'}</span>
+                                            </div>
+                                            <div>
+                                                <span className="text-[10px] text-slate-400 block">Coord.</span>
+                                                <span className="font-medium">{member.coordenadorId ? getMemberName(member.coordenadorId).split(' ')[0] : '-'}</span>
+                                            </div>
+                                        </div>
+                                    </>
+                                ) : (
+                                    <div>
+                                        <span className="text-[10px] text-slate-400 block">Reporta a</span>
+                                        <span className="font-medium">{member.reportsToId ? getMemberName(member.reportsToId) : '-'}</span>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Actions */}
+                            <div className="flex justify-end gap-3 pt-2 border-t border-slate-100">
+                                <button
+                                    onClick={() => { handleEditTeamMember(member); setTimeout(() => window.scrollTo({ top: 300, behavior: 'smooth' }), 100); }}
+                                    className="flex items-center gap-1 text-blue-600 text-xs font-bold"
+                                >
+                                    <Pencil size={14} /> Editar
+                                </button>
+                                <button
+                                    onClick={() => handleDeleteTeamMember(member.id)}
+                                    className="flex items-center gap-1 text-red-600 text-xs font-bold"
+                                >
+                                    <Trash2 size={14} /> Excluir
+                                </button>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+
+                {/* --- DESKTOP TABLE (Hidden on mobile) --- */}
+                <div className="hidden md:block overflow-x-auto max-h-[600px]">
                     <table className="w-full text-xs text-left border-collapse">
                         <thead className="bg-[#940910] text-white">
                             <tr>

@@ -607,7 +607,56 @@ export const OccurrenceList: React.FC<OccurrenceListProps> = ({ users = [], curr
         </div>
 
         {/* --- TABLE --- */}
-        <div className="overflow-x-auto -mx-6 px-6">
+        {/* --- MOBILE CARDS (Visible only on mobile) --- */}
+        <div className="block md:hidden space-y-4">
+          {occurrences.map(o => {
+            const canEdit = currentUser.role !== UserRole.GESTOR && ((o.status !== OccurrenceStatus.CONCLUIDA && o.status !== OccurrenceStatus.CANCELADA) || currentUser.role === UserRole.ADMIN);
+            return (
+              <div key={o.id} className="bg-white p-4 rounded-lg shadow border border-slate-200">
+                <div className="flex justify-between items-start border-b border-slate-100 pb-2 mb-2">
+                  <div>
+                    <span className="text-[10px] font-bold text-slate-400">#{o.id.slice(-6)}</span>
+                    <div className="text-xs font-bold text-[#404040]">{formatDate(o.date)} <span className="font-normal text-slate-500">{o.time?.slice(0, 5)}</span></div>
+                  </div>
+                  <Badge status={o.status} />
+                </div>
+
+                <div className="space-y-1 mb-3">
+                  <div className="text-sm font-semibold text-[#940910]">{o.category}</div>
+                  <div className="text-xs text-slate-600 line-clamp-2">{o.description}</div>
+
+                  <div className="flex flex-wrap gap-2 mt-2">
+                    <span className="text-[10px] bg-slate-100 px-2 py-0.5 rounded text-slate-600 font-medium">
+                      Téc: {o.technicianName?.split(' ')[0] || '-'}
+                    </span>
+                    <span className="text-[10px] bg-slate-100 px-2 py-0.5 rounded text-slate-600 font-medium">
+                      Filial: {o.branch || '-'}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
+                  <Button variant="outline" className="h-8 text-xs px-2" onClick={() => onViewDetails(o)}>
+                    Ver Detalhes
+                  </Button>
+                  {canEdit && (
+                    <>
+                      <button className="p-1.5 text-blue-600 hover:bg-blue-50 rounded" onClick={() => onEdit(o)}>
+                        <Pencil size={16} />
+                      </button>
+                      <button className="p-1.5 text-red-600 hover:bg-red-50 rounded" onClick={() => onDelete(o.id)}>
+                        <Trash2 size={16} />
+                      </button>
+                    </>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* --- DESKTOP TABLE (Hidden on mobile) --- */}
+        <div className="hidden md:block overflow-x-auto -mx-6 px-6">
           <table className="w-full text-[11px] text-left border-collapse table-fixed min-w-[850px]">
             <thead className="bg-[#940910] text-white font-bold border-b border-[#940910]">
               <tr>
@@ -626,7 +675,7 @@ export const OccurrenceList: React.FC<OccurrenceListProps> = ({ users = [], curr
             <tbody className="divide-y divide-slate-200">
 
               {occurrences.map(o => {
-                const canEdit = (o.status !== OccurrenceStatus.CONCLUIDA && o.status !== OccurrenceStatus.CANCELADA) || currentUser.role === UserRole.ADMIN;
+                const canEdit = currentUser.role !== UserRole.GESTOR && ((o.status !== OccurrenceStatus.CONCLUIDA && o.status !== OccurrenceStatus.CANCELADA) || currentUser.role === UserRole.ADMIN);
                 return (
                   <tr key={o.id} className="hover:bg-slate-50 transition-colors">
                     <td className="px-1.5 py-2">
