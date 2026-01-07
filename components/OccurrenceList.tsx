@@ -727,7 +727,7 @@ export const OccurrenceList: React.FC<OccurrenceListProps> = ({ users = [], curr
                         <button onClick={() => onViewDetails(o)} className="p-1 text-slate-500 hover:bg-slate-100 rounded" title="Detalhes">
                           <Eye size={12} />
                         </button>
-                        {o.status === OccurrenceStatus.REGISTRADA && (
+                        {canEdit && o.status === OccurrenceStatus.REGISTRADA && (
                           <>
                             <button onClick={() => handleAction(o.id, 'COMPLETE')} className="p-1 text-green-600 hover:bg-green-50 rounded" title="Concluir">
                               <CheckCircle size={12} />
@@ -737,9 +737,11 @@ export const OccurrenceList: React.FC<OccurrenceListProps> = ({ users = [], curr
                             </button>
                           </>
                         )}
-                        <button onClick={(e) => { e.stopPropagation(); handleDelete(o.id); }} className="p-1 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded" title="Excluir">
-                          <Trash2 size={12} />
-                        </button>
+                        {canEdit && (
+                          <button onClick={(e) => { e.stopPropagation(); handleDelete(o.id); }} className="p-1 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded" title="Excluir">
+                            <Trash2 size={12} />
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
