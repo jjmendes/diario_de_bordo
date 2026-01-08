@@ -13,9 +13,10 @@ interface OccurrenceListProps {
   onViewDetails: (occurrence: Occurrence) => void;
   onEdit: (occurrence: Occurrence) => void;
   onDelete: (id: string) => Promise<void>;
+  refreshTrigger?: number;
 }
 
-export const OccurrenceList: React.FC<OccurrenceListProps> = ({ users = [], currentUser, onUpdateStatus, onUpdateEscalation, onViewDetails, onEdit, onDelete }) => {
+export const OccurrenceList: React.FC<OccurrenceListProps> = ({ users = [], currentUser, onUpdateStatus, onUpdateEscalation, onViewDetails, onEdit, onDelete, refreshTrigger }) => {
   // --- Data States ---
   const [occurrences, setOccurrences] = useState<Occurrence[]>([]);
   const [loading, setLoading] = useState(false);
@@ -136,12 +137,12 @@ export const OccurrenceList: React.FC<OccurrenceListProps> = ({ users = [], curr
     setHasMore(resultData.length === pageSize); // If we got full page, assume more might exist
     setLoading(false);
 
-  }, [filters, debouncedSearch, page, pageSize]);
+  }, [filters, debouncedSearch, page, pageSize, currentUser]);
 
-  // Initial Fetch & Filter Change
+  // Refresh data when filters or page change OR when refreshTrigger changes
   useEffect(() => {
-    fetchData(false);
-  }, [filters, debouncedSearch, fetchData]); // Reset page on filter change
+    fetchData(true);
+  }, [filters, page, debouncedSearch, refreshTrigger, fetchData]); // Refresh on filter/trigger change
 
   const handleLoadMore = () => {
     fetchData(true);

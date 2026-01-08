@@ -23,6 +23,7 @@ const AppContent = () => {
   const [selectedOccurrence, setSelectedOccurrence] = useState<Occurrence | null>(null);
   const [editingOccurrence, setEditingOccurrence] = useState<Occurrence | null>(null);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+  const [refreshTrigger, setRefreshTrigger] = useState(0); // Signal for child components to refresh data
 
 
 
@@ -129,7 +130,9 @@ const AppContent = () => {
     };
 
     await SupabaseDB.saveOccurrence(updated);
-    await fetchOccurrences();
+    await SupabaseDB.saveOccurrence(updated);
+    // await fetchOccurrences(); // No longer needed for list data
+    setRefreshTrigger(prev => prev + 1);
   };
 
   const handleUpdateEscalation = async (id: string, newLevel: EscalationLevel) => {
@@ -154,7 +157,9 @@ const AppContent = () => {
     };
 
     await SupabaseDB.saveOccurrence(updated);
-    await fetchOccurrences();
+    await SupabaseDB.saveOccurrence(updated);
+    // await fetchOccurrences();
+    setRefreshTrigger(prev => prev + 1);
   };
 
   const handleSaveEdit = async (updatedData: Partial<Occurrence>) => {
@@ -176,7 +181,9 @@ const AppContent = () => {
     };
 
     await SupabaseDB.saveOccurrence(updated);
-    await fetchOccurrences();
+    await SupabaseDB.saveOccurrence(updated);
+    // await fetchOccurrences();
+    setRefreshTrigger(prev => prev + 1);
     setEditingOccurrence(null);
   };
 
@@ -227,6 +234,7 @@ const AppContent = () => {
               onViewDetails={setSelectedOccurrence}
               onEdit={setEditingOccurrence}
               onDelete={handleDeleteOccurrence}
+              refreshTrigger={refreshTrigger}
             />
           } />
 
