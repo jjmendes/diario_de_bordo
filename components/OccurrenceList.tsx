@@ -140,9 +140,10 @@ export const OccurrenceList: React.FC<OccurrenceListProps> = ({ users = [], curr
   }, [filters, debouncedSearch, page, pageSize, currentUser]);
 
   // Refresh data when filters or page change OR when refreshTrigger changes
+  // Refresh data when filters changes OR when refreshTrigger changes
   useEffect(() => {
-    fetchData(true);
-  }, [filters, page, debouncedSearch, refreshTrigger, fetchData]); // Refresh on filter/trigger change
+    fetchData(false); // Reset to page 0
+  }, [filters, debouncedSearch, refreshTrigger, fetchData]); // Removed page to avoid loop
 
   const handleLoadMore = () => {
     fetchData(true);
